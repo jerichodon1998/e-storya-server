@@ -2,3 +2,5 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
 
 export { allowedOrigins };
 export * from './db';
+export * from './services';
+export * from './types';

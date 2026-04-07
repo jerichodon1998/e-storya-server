@@ -1,15 +1,16 @@
 import 'dotenv/config';
 
 import Fastify, { FastifyReply, FastifyRequest } from 'fastify';
-import { WebSocket } from 'ws';
-import { allowedOrigins, mongooseInit } from './lib';
-import { Message, SignUpMethodEnum, User } from './lib/db';
+import {
+	allowedOrigins,
+	mongooseInit,
+	SignUpMethodEnum,
+	usersService,
+} from '@/lib';
 
 import cors from '@fastify/cors';
-import mongoose from 'mongoose';
 import FastifyWebSocket from '@fastify/websocket';
-
-const clients: Map<string, WebSocket> = new Map();
+import { websocketService } from './lib/services/websocketService';
 
 const fastify = Fastify({
 	logger: {
@@ -45,7 +46,7 @@ fastify.post(
 		reply: FastifyReply
 	) => {
 		const { email, password } = request.body;
-		const userCredentials = await User.signinWithEmailAndPassword({
+		const userCredentials = await usersService.signinWithEmailAndPassword({
 			email: email,
 			password: password,
 		});
@@ -73,7 +74,7 @@ fastify.post(
 		const { username, password, email } = request.body;
 
 		try {
-			const { error, user } = await User.createNewUser({
+			const { error, user } = await usersService.createNewUser({
 				username,
 				password,
 				email,
@@ -92,35 +93,6 @@ fastify.post(
 		}
 	}
 );
-
-async function broadcast(params: { message: string | Record<string, any> }) {
-	const parsedMessage =
-		typeof params.message === 'string'
-			? JSON.parse(params.message)
-			: params.message;
-	const stringifiedMessage =
-		typeof params.message === 'string'
-			? params.message
-			: JSON.stringify(params.message);
-
-	try {
-		await Message.insertOne({
-			...parsedMessage,
-			userId: new mongoose.Types.ObjectId(),
-			type: 'string',
-			others: '',
-		});
-
-		for (const [_, socket] of clients) {
-			if (socket.readyState === WebSocket.OPEN) {
-				console.log('broadcasting', stringifiedMessage);
-				socket.send(stringifiedMessage);
-			}
-		}
-	} catch (error) {
-		console.log('error', error);
-	}
-}
 
 fastify.register(async function (fastify) {
 	fastify.get(
@@ -141,27 +113,7 @@ fastify.register(async function (fastify) {
 				return;
 			}
 
-			clients.set(userId, socket);
-			console.log('clients', clients.keys());
-
-			socket.on('message', (message: Buffer | ArrayBuffer | Buffer[]) => {
-				let parsedMessage = '';
-
-				try {
-					parsedMessage = JSON.parse(message?.toString());
-					console.log('parsedMessage', parsedMessage);
-				} catch (error) {
-					console.log('error', error);
-				}
-
-				broadcast({ message: JSON.stringify(parsedMessage) });
-			});
-
-			socket.on('close', () => {
-				console.log('user disconnected');
-				clients.delete(userId);
-				console.log('clients', clients.keys());
-			});
+			websocketService.registerSocket({ clientId: userId, socket });
 		}
 	);
 });

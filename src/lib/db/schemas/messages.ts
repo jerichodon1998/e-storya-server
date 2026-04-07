@@ -1,21 +1,5 @@
+import { IMessage, MessageTypeEnum } from '@/lib/types';
 import mongoose, { Schema, model } from 'mongoose';
-
-enum MessageTypeEnum {
-	TEXT = 'text',
-	IMAGE = 'image',
-	VIDEO = 'video',
-	AUDIO = 'audio',
-}
-
-interface IMessage {
-	_id: mongoose.Schema.Types.ObjectId;
-	content: string;
-	createdAt: Date;
-	updatedAt?: Date;
-	deletedAt?: Date;
-	userId: mongoose.Schema.Types.ObjectId;
-	type: string;
-}
 
 const messageSchema = new Schema<IMessage>({
 	_id: {
@@ -33,4 +17,4 @@ const messageSchema = new Schema<IMessage>({
 
 const Message = model<IMessage>('Message', messageSchema);
 
-export { Message, type IMessage, MessageTypeEnum };
+export { Message, type IMessage };
