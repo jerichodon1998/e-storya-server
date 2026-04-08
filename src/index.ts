@@ -1,16 +1,12 @@
 import 'dotenv/config';
 
-import Fastify, { FastifyReply, FastifyRequest } from 'fastify';
-import {
-	allowedOrigins,
-	mongooseInit,
-	SignUpMethodEnum,
-	usersService,
-} from '@/lib';
+import { allowedOrigins, mongooseInit } from '@/lib';
+import { AppRoutes } from '@/rest-apis/v1/users/routes';
+import { chatWebsocketRoutes } from '@/websockets/v1/chat';
 
 import cors from '@fastify/cors';
 import FastifyWebSocket from '@fastify/websocket';
-import { websocketService } from './lib/services/websocketService';
+import Fastify from 'fastify';
 
 const fastify = Fastify({
 	logger: {
@@ -18,7 +14,11 @@ const fastify = Fastify({
 	},
 });
 
-fastify.register(FastifyWebSocket);
+fastify.register(FastifyWebSocket, {
+	options: {
+		maxPayload: 1048576 * 10, // 10 MB
+	},
+});
 fastify.register(cors, {
 	origin: (origin, cb) => {
 		if (
@@ -34,89 +34,8 @@ fastify.register(cors, {
 	},
 });
 
-fastify.post(
-	'/users/signin',
-	async (
-		request: FastifyRequest<{
-			Body: {
-				email: string;
-				password: string;
-			};
-		}>,
-		reply: FastifyReply
-	) => {
-		const { email, password } = request.body;
-		const userCredentials = await usersService.signinWithEmailAndPassword({
-			email: email,
-			password: password,
-		});
-
-		if (!userCredentials.user) {
-			reply.status(401).send({ error: userCredentials.error });
-		}
-
-		reply.status(200).send(userCredentials.user);
-	}
-);
-
-fastify.post(
-	'/users/signup',
-	async (
-		request: FastifyRequest<{
-			Body: {
-				username: string;
-				password: string;
-				email: string;
-			};
-		}>,
-		reply: FastifyReply
-	) => {
-		const { username, password, email } = request.body;
-
-		try {
-			const { error, user } = await usersService.createNewUser({
-				username,
-				password,
-				email,
-				method: SignUpMethodEnum.EMAIL,
-			});
-
-			if (!user || error) {
-				reply.status(500).send({ error });
-				return;
-			}
-
-			reply.status(200).send(user);
-		} catch (error) {
-			console.log('error', error);
-			reply.status(500).send({ error });
-		}
-	}
-);
-
-fastify.register(async function (fastify) {
-	fastify.get(
-		'/ws',
-		{ websocket: true },
-		async (
-			socket,
-			request: FastifyRequest<{
-				Querystring: {
-					userId: string;
-				};
-			}>
-		) => {
-			const userId = request?.query?.userId;
-
-			if (!userId) {
-				socket.close(1000, 'No userId provided');
-				return;
-			}
-
-			websocketService.registerSocket({ clientId: userId, socket });
-		}
-	);
-});
+fastify.register(AppRoutes, { prefix: '/v1' });
+fastify.register(chatWebsocketRoutes, { prefix: '/v1' });
 
 fastify.get('/', (request, reply) => {
 	reply.status(200).send({ hello: 'world' });

@@ -5,7 +5,10 @@
 		"target": "esnext",
 		"module": "commonjs",
 		"paths": {
-			"@/*": ["./src/*"]
+			"@/*": ["./src/*"],
+			"@rest-apis/*": ["./src/rest-apis/*"],
+			"@websockets/*": ["./src/websockets/*"],
+			"@lib/*": ["./src/lib/*"]
 		},
 		"sourceMap": true,
 		"declaration": true,

@@ -8,17 +8,17 @@ enum MessageTypeEnum {
 }
 
 interface IMessage {
-	_id: mongoose.Schema.Types.ObjectId;
+	_id: mongoose.Schema.Types.ObjectId | string;
 	content: string;
 	createdAt: Date;
 	updatedAt?: Date;
 	deletedAt?: Date;
-	userId: mongoose.Schema.Types.ObjectId;
+	userId: mongoose.Schema.Types.ObjectId | string;
 	type: string;
 }
 
 interface IUser {
-	_id: mongoose.Schema.Types.ObjectId;
+	_id: mongoose.Schema.Types.ObjectId | string;
 	username: string;
 	email: string;
 	firstName?: string;

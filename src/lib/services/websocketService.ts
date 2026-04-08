@@ -1,6 +1,5 @@
-import mongoose from 'mongoose';
 import { messagesService } from './MessagesService';
-import { MessageTypeEnum } from '../types';
+import { IMessage, MessageTypeEnum } from '../types';
 import { WebSocket } from 'ws';
 
 class WebSocketService {
@@ -33,7 +32,7 @@ class WebSocketService {
 	}
 
 	async broadcast(params: { message: string | Record<string, any> }) {
-		const parsedMessage =
+		const parsedMessage: IMessage =
 			typeof params.message === 'string'
 				? JSON.parse(params.message)
 				: params.message;
@@ -47,7 +46,6 @@ class WebSocketService {
 				messages: [
 					{
 						...parsedMessage,
-						userId: new mongoose.Types.ObjectId(),
 						type: MessageTypeEnum.TEXT,
 					},
 				],
