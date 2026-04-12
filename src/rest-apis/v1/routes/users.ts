@@ -1,13 +1,10 @@
 import { FastifyInstance } from 'fastify';
-import {
-	userSignInSchema,
-	userSignUpSchema,
-} from '@rest-apis/v1/users/schemas';
+import { userSignInSchema, userSignUpSchema } from '@rest-apis/v1/schemas';
 import {
 	userSignInController,
 	userSignUpController,
 	getSignedInUserController,
-} from '@rest-apis/v1/users/controllers';
+} from '@rest-apis/v1/controllers';
 
 export async function userRoutes(fastify: FastifyInstance) {
 	fastify.route({
