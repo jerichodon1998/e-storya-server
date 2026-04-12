@@ -3,20 +3,26 @@ import { IMessage, MessageTypeEnum } from '../types';
 import { WebSocket } from 'ws';
 
 class WebSocketService {
-	clients: Map<string, WebSocket> = new Map();
+	clients: Map<string, Set<WebSocket>> = new Map();
 
 	registerSocket(params: { clientId: string; socket: WebSocket }) {
 		const { socket, clientId } = params;
 
-		this.clients.set(params.clientId, params.socket);
-		console.log('clients', this.clients.keys());
+		if (!this.clients.has(clientId)) {
+			this.clients.set(params.clientId, new Set());
+		}
+
+		this.clients.get(clientId)?.add(socket);
+
+		for (const [_, sockets] of this.clients) {
+			console.log('clientId', _, 'sockets', sockets.size);
+		}
 
 		socket.on('message', (message: Buffer | ArrayBuffer | Buffer[]) => {
 			let parsedMessage = '';
 
 			try {
 				parsedMessage = JSON.parse(message?.toString());
-				console.log('parsedMessage', parsedMessage);
 			} catch (error) {
 				console.log('error', error);
 			}
@@ -25,9 +31,21 @@ class WebSocketService {
 		});
 
 		socket.on('close', () => {
-			console.log('user disconnected');
-			this.clients.delete(clientId);
-			console.log('clients', this.clients.keys());
+			console.log('client disconnected');
+
+			this.clients.get(clientId)?.delete(socket);
+
+			if (!this.clients.get(clientId)?.size) {
+				this.clients.delete(clientId);
+			}
+
+			for (const [_, sockets] of this.clients) {
+				console.log('clientId', _, 'sockets', sockets.size);
+			}
+
+			if (!this.clients.size) {
+				console.log('no clients');
+			}
 		});
 	}
 
@@ -51,10 +69,12 @@ class WebSocketService {
 				],
 			});
 
-			for (const [_, socket] of this.clients) {
-				if (socket.readyState === WebSocket.OPEN) {
-					console.log('broadcasting', stringifiedMessage);
-					socket.send(stringifiedMessage);
+			for (const [_, sockets] of this.clients) {
+				for (const socket of sockets.values()) {
+					if (socket.readyState === WebSocket.OPEN) {
+						console.log('broadcasting', stringifiedMessage);
+						socket.send(stringifiedMessage);
+					}
 				}
 			}
 		} catch (error) {
