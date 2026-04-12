@@ -1,4 +1,5 @@
 import { websocketService } from '@/lib/services/websocketService';
+import { verifyJwtToken } from '@/rest-apis/v1/middlewares';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 
 export async function chatWebsocketRoutes(fastify: FastifyInstance) {
@@ -13,14 +14,22 @@ export async function chatWebsocketRoutes(fastify: FastifyInstance) {
 				};
 			}>
 		) => {
-			const userId = request?.query?.userId;
-
-			if (!userId) {
-				socket.close(1000, 'No userId provided');
+			try {
+				await verifyJwtToken(request);
+			} catch (error) {
+				socket.close();
 				return;
 			}
 
-			websocketService.registerSocket({ clientId: userId, socket });
+			const user = request.user;
+			const userId = user?._id;
+
+			if (!userId) {
+				socket.close();
+				return;
+			}
+
+			websocketService.registerSocket({ clientId: userId?.toString(), socket });
 		}
 	);
 }

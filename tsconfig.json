@@ -21,7 +21,8 @@
 		"noUncheckedSideEffectImports": true,
 		"moduleDetection": "force",
 		"skipLibCheck": true,
-		"noImplicitAny": false
+		"noImplicitAny": false,
+		"types": ["./src/shared/types/fastify.d.ts", "./src/shared/types/env.d.ts"]
 	},
 	"ts-node": {
 		"require": ["tsconfig-paths/register"]

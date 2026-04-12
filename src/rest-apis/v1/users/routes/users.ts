@@ -6,20 +6,28 @@ import {
 import {
 	userSignInController,
 	userSignUpController,
+	getSignedInUserController,
 } from '@rest-apis/v1/users/controllers';
 
 export async function userRoutes(fastify: FastifyInstance) {
 	fastify.route({
 		method: 'POST',
-		url: '/users/signin',
+		url: '/signin',
 		schema: userSignInSchema,
 		handler: userSignInController,
 	});
 
 	fastify.route({
 		method: 'POST',
-		url: '/users/signup',
+		url: '/signup',
 		schema: userSignUpSchema,
 		handler: userSignUpController,
+	});
+
+	fastify.route({
+		method: 'GET',
+		url: '/signed-in-user',
+		preHandler: fastify.auth([fastify.verifyJwtToken]),
+		handler: getSignedInUserController,
 	});
 }

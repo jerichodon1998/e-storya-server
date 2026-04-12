@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import { IUser, SignUpMethodEnum } from '../types';
 import { User } from '../db';
+import { HydratedDocument, isValidObjectId, ObjectId } from 'mongoose';
 
 class UsersService {
 	async signinWithEmailAndPassword(params: {
@@ -75,6 +76,32 @@ class UsersService {
 		// TODO: Google Signup
 
 		return { user: userData };
+	}
+
+	async getUserById(params: { userId: string | ObjectId }): Promise<{
+		user?: Omit<HydratedDocument<IUser>, 'password'> | null;
+		error?: any;
+	}> {
+		const { userId } = params;
+
+		if (!isValidObjectId(userId)) {
+			return { error: 'Invalid userId' };
+		}
+
+		try {
+			const user = await User.findOne({ _id: userId });
+
+			if (!user) {
+				return { error: 'User not found.' };
+			}
+
+			const parsedUserToObject = user.toObject();
+			delete parsedUserToObject.password; // remove password from response
+
+			return { user };
+		} catch (error) {
+			return { error };
+		}
 	}
 }
 
