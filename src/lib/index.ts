@@ -11,4 +11,3 @@ const isDevelopment = ENV === 'development' || !ENV;
 export { allowedOrigins, isProduction, isStaging, isDevelopment };
 export * from './db';
 export * from './services';
-export * from './types';

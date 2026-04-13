@@ -1,10 +1,34 @@
-import { messagesService } from './MessagesService';
-import { IMessage, MessageTypeEnum } from '../types';
+import { messagesService } from '@lib/services/MessagesService';
 import { WebSocket } from 'ws';
+import { IMessage } from '@lib/db';
+import { MessageTypeEnum } from '@/shared/enums';
 
 class WebSocketService {
 	clients: Map<string, Set<WebSocket>> = new Map();
 
+	private logClients() {
+		console.log(
+			'================================================================================'
+		);
+		if (!this.clients.size) {
+			console.log('no clients');
+		} else {
+			console.log('total connected clients:', this.clients.size);
+			for (const [clientId, sockets] of this.clients) {
+				console.log(
+					'userId: ',
+					clientId,
+					'| total connected sockets:',
+					sockets.size
+				);
+			}
+		}
+		console.log(
+			'================================================================================'
+		);
+	}
+
+	// TODO: implement ping pong to check if client is still connected.
 	registerSocket(params: { clientId: string; socket: WebSocket }) {
 		const { socket, clientId } = params;
 
@@ -13,21 +37,16 @@ class WebSocketService {
 		}
 
 		this.clients.get(clientId)?.add(socket);
-
-		for (const [_, sockets] of this.clients) {
-			console.log('clientId', _, 'sockets', sockets.size);
-		}
+		this.logClients();
 
 		socket.on('message', (message: Buffer | ArrayBuffer | Buffer[]) => {
-			let parsedMessage = '';
-
 			try {
-				parsedMessage = JSON.parse(message?.toString());
-			} catch (error) {
-				console.log('error', error);
+				const parsedMessage = JSON.parse(message?.toString()) as IMessage;
+				console.log('parsedMessage', parsedMessage);
+				this.broadcast({ message: parsedMessage });
+			} catch (error: any) {
+				console.log('error', error?.message);
 			}
-
-			this.broadcast({ message: JSON.stringify(parsedMessage) });
 		});
 
 		socket.on('close', () => {
@@ -39,13 +58,7 @@ class WebSocketService {
 				this.clients.delete(clientId);
 			}
 
-			for (const [_, sockets] of this.clients) {
-				console.log('clientId', _, 'sockets', sockets.size);
-			}
-
-			if (!this.clients.size) {
-				console.log('no clients');
-			}
+			this.logClients();
 		});
 	}
 
@@ -67,6 +80,7 @@ class WebSocketService {
 						type: MessageTypeEnum.TEXT,
 					},
 				],
+				shouldThrowError: true,
 			});
 
 			for (const [_, sockets] of this.clients) {

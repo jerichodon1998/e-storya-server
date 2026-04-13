@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import emailValidator from 'email-validator';
-import { IUser } from '@/lib/types';
+import { IUser } from '@/shared/types';
+import { CollectionNamesEnum } from '@/shared/enums';
 
 const userSchema = new mongoose.Schema<IUser>(
 	{
@@ -39,6 +40,10 @@ const userSchema = new mongoose.Schema<IUser>(
 	}
 );
 
-const User = mongoose.model<IUser>('User', userSchema);
+const User = mongoose.model<IUser>(
+	CollectionNamesEnum.USERS,
+	userSchema,
+	CollectionNamesEnum.USERS
+);
 
 export { User, type IUser };

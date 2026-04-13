@@ -1,2 +1,2 @@
-export { SignUpMethodEnum, usersService } from './UsersService';
-export { messagesService } from './MessagesService';
+export * from './UsersService';
+export * from './MessagesService';
