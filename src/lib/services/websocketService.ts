@@ -26,9 +26,11 @@ class WebSocketService {
 	private usersToChannels: Map<string, Set<string>> = new Map();
 
 	private logClients() {
-		if (!this.usersToSockets.size) {
-			console.log('no clients');
-		} else {
+		console.log('usersToSockets:', this.usersToSockets.size);
+		console.log('channelsToUsers:', this.channelsToUsers.size);
+		console.log('usersToChannels:', this.usersToChannels.size);
+
+		if (this.usersToSockets.size) {
 			console.log('total set of user sockets:', this.usersToSockets.size);
 			for (const [userId, sockets] of this.usersToSockets) {
 				console.log(
