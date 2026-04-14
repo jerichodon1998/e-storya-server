@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { HydratedDocument } from 'mongoose';
 import {
 	ChannelMemberRoleEnum,
 	ChannelMemberStatusEnum,
@@ -49,3 +49,7 @@ export interface IChannelMember {
 	userId: mongoose.Schema.Types.ObjectId | string;
 	channelId: mongoose.Schema.Types.ObjectId | string;
 }
+
+export type ChannelMemberWithUser = HydratedDocument<IChannelMember> & {
+	userId: IUser;
+};
