@@ -1,7 +1,7 @@
 import { messagesService } from '@lib/services/MessagesService';
 import { MessageTypeEnum } from '@src/shared/enums';
 import { IMessage } from '@src/shared/types';
-import { ObjectId } from 'mongoose';
+import { isValidObjectId, ObjectId } from 'mongoose';
 import { WebSocket } from 'ws';
 import { channelsService } from './ChannelsService';
 
@@ -187,6 +187,38 @@ class WebSocketService {
 						this.channelsToUsers.delete(channel);
 					}
 				}
+			}
+		}
+	}
+
+	// TODO: implement subscribe user to channel
+	unsubscribeUserFromChannel(params: {
+		userId: string | ObjectId;
+		channelId: string | ObjectId;
+	}): void {
+		const { userId, channelId } = params;
+		const userIdString = userId?.toString();
+		const channelIdString = channelId?.toString();
+
+		if (!isValidObjectId(userIdString) || !isValidObjectId(channelIdString)) {
+			return;
+		}
+
+		const userChannels = this.usersToChannels.get(userIdString);
+		const channelUsers = this.channelsToUsers.get(channelIdString);
+		if (userChannels?.has(channelIdString)) {
+			userChannels.delete(channelIdString);
+
+			if (userChannels.size <= 0) {
+				this.usersToChannels.delete(userIdString);
+			}
+		}
+
+		if (channelUsers?.has(userIdString)) {
+			channelUsers.delete(userIdString);
+
+			if (channelUsers.size <= 0) {
+				this.channelsToUsers.delete(channelIdString);
 			}
 		}
 	}
