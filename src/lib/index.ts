@@ -1,13 +1,12 @@
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
+export const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
 
-const ENV = process.env.NODE_ENV;
+export const ENV = process.env.NODE_ENV;
 
-const isProduction = ENV === 'production';
+export const isProduction = ENV === 'production';
 
-const isStaging = ENV === 'staging';
+export const isStaging = ENV === 'staging';
 
-const isDevelopment = ENV === 'development' || !ENV;
+export const isDevelopment = ENV === 'development' || !ENV;
 
-export { allowedOrigins, isProduction, isStaging, isDevelopment };
 export * from './db';
 export * from './services';

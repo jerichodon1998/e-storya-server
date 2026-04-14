@@ -1,5 +1,5 @@
-import { websocketService } from '@/lib/services/websocketService';
-import { verifyJwtToken } from '@/rest-apis/v1/middlewares';
+import { websocketService } from '@src/lib/services/WebsocketService';
+import { verifyJwtToken } from '@src/rest-apis/v1/middlewares';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 
 export async function chatWebsocketRoutes(fastify: FastifyInstance) {

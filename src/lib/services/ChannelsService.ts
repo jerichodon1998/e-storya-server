@@ -4,9 +4,9 @@ import {
 	IChannel,
 	IChannelMember,
 	IUser,
-} from '@/shared/types';
-import { Channel, ChannelMember } from '@/lib/db/schemas';
-import { ChannelMemberStatusEnum } from '@/shared/enums';
+} from '@src/shared/types';
+import { Channel, ChannelMember } from '@src/lib/db/schemas';
+import { ChannelMemberStatusEnum } from '@src/shared/enums';
 import { omit } from 'lodash-es';
 
 class ChannelsService {

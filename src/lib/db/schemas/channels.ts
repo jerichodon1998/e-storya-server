@@ -1,5 +1,5 @@
-import { ChannelTypeEnum, CollectionNamesEnum } from '@/shared/enums';
-import { IChannel } from '@/shared/types';
+import { ChannelTypeEnum, CollectionNamesEnum } from '@src/shared/enums';
+import { IChannel } from '@src/shared/types';
 import mongoose, { Schema, model } from 'mongoose';
 
 const channelSchema = new Schema<IChannel>({

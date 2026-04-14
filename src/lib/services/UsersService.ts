@@ -1,7 +1,8 @@
 import bcrypt from 'bcrypt';
-import { IUser, User } from '@lib/db';
+import { User } from '@lib/db';
 import { HydratedDocument, isValidObjectId, ObjectId } from 'mongoose';
-import { SignUpMethodEnum } from '@/shared/enums';
+import { SignUpMethodEnum } from '@src/shared/enums';
+import { IUser } from '@src/shared/types';
 
 class UsersService {
 	async signinWithEmailAndPassword(params: {
@@ -107,4 +108,4 @@ class UsersService {
 
 const usersService = new UsersService();
 
-export { usersService, SignUpMethodEnum };
+export { usersService };

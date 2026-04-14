@@ -1,5 +1,5 @@
-import { CollectionNamesEnum, MessageTypeEnum } from '@/shared/enums';
-import { IMessage } from '@/shared/types';
+import { CollectionNamesEnum, MessageTypeEnum } from '@src/shared/enums';
+import { IMessage } from '@src/shared/types';
 import mongoose, { Schema, model } from 'mongoose';
 
 const messageSchema = new Schema<IMessage>({
@@ -31,4 +31,4 @@ const Message = model<IMessage>(
 	CollectionNamesEnum.MESSAGES
 );
 
-export { Message, type IMessage };
+export { Message };

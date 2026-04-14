@@ -1,6 +1,6 @@
-import { IUser } from '@/lib';
-import { encodedJwtSecret } from '@/shared/constants';
-import { CookieNamesEnum } from '@/shared/enums';
+import { IUser } from '@src/shared/types';
+import { encodedJwtSecret } from '@src/shared/constants';
+import { CookieNamesEnum } from '@src/shared/enums';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import jose from 'jose';
 import { JOSEError } from 'jose/errors';

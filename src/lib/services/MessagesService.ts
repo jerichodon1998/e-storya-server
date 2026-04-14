@@ -1,4 +1,5 @@
-import { IMessage, Message } from '@/lib/db';
+import { Message } from '@src/lib/db';
+import { IMessage } from '@src/shared/types';
 import { HydratedDocument } from 'mongoose';
 
 class MessagesService {

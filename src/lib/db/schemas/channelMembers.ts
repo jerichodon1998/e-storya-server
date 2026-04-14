@@ -2,8 +2,8 @@ import {
 	ChannelMemberRoleEnum,
 	ChannelMemberStatusEnum,
 	CollectionNamesEnum,
-} from '@/shared/enums';
-import { IChannelMember } from '@/shared/types';
+} from '@src/shared/enums';
+import { IChannelMember } from '@src/shared/types';
 import mongoose, { Schema, model } from 'mongoose';
 
 const channelMembersSchema = new Schema<IChannelMember>({

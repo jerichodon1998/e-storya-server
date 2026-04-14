@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
-import { mongooseInit } from '@/lib';
-import { chatWebsocketRoutes } from '@/websockets/v1/chat';
+import { mongooseInit } from './lib';
+import { chatWebsocketRoutes } from '@src/websockets/v1/chat';
 import { verifyJwtToken } from './rest-apis/v1/middlewares';
 import { AppRoutes } from './rest-apis/v1/routes';
 

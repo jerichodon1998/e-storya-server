@@ -7,7 +7,7 @@
 	"main": "index.js",
 	"scripts": {
 		"dev": "nodemon --watch src --watch package.json --watch tsconfig.json --ext ts,js,mjs,cjs,mts,cts --exec ts-node src/index.ts",
-		"build": "tsc",
+		"build": "tsc && tsc-alias",
 		"start": "node build/index.js"
 	},
 	"dependencies": {
@@ -32,6 +32,7 @@
 		"@types/ws": "^8.18.1",
 		"nodemon": "^3.1.14",
 		"ts-node": "^10.9.2",
+		"tsc-alias": "^1.8.16",
 		"tsconfig-paths": "^4.2.0",
 		"typescript": "^6.0.2"
 	}

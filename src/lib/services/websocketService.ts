@@ -1,15 +1,12 @@
 import { messagesService } from '@lib/services/MessagesService';
+import { MessageTypeEnum } from '@src/shared/enums';
+import { IMessage } from '@src/shared/types';
 import { WebSocket } from 'ws';
-import { IMessage } from '@lib/db';
-import { MessageTypeEnum } from '@/shared/enums';
 
 class WebSocketService {
 	clients: Map<string, Set<WebSocket>> = new Map();
 
 	private logClients() {
-		console.log(
-			'================================================================================'
-		);
 		if (!this.clients.size) {
 			console.log('no clients');
 		} else {

@@ -5,7 +5,7 @@
 		"target": "esnext",
 		"module": "commonjs",
 		"paths": {
-			"@/*": ["./src/*"],
+			"@src/*": ["./src/*"],
 			"@rest-apis/*": ["./src/rest-apis/*"],
 			"@websockets/*": ["./src/websockets/*"],
 			"@lib/*": ["./src/lib/*"]
