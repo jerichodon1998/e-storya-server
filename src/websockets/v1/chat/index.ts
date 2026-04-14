@@ -29,7 +29,10 @@ export async function chatWebsocketRoutes(fastify: FastifyInstance) {
 				return;
 			}
 
-			websocketService.registerSocket({ clientId: userId?.toString(), socket });
+			await websocketService.registerSocket({
+				userId: userId?.toString(),
+				socket,
+			});
 		}
 	);
 }

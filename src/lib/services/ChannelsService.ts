@@ -81,7 +81,7 @@ class ChannelsService {
 		}
 
 		try {
-			const userChannelMembersData = await ChannelMember.find({
+			const userChannelMembersData = (await ChannelMember.find({
 				userId,
 				deletedAt: null,
 				status: {
@@ -91,7 +91,9 @@ class ChannelsService {
 						ChannelMemberStatusEnum.PENDING,
 					],
 				},
-			});
+			}).select('channelId')) as HydratedDocument<
+				Pick<IChannelMember, 'channelId' | '_id'>
+			>[];
 			const userChannelIds = userChannelMembersData.map(
 				(channelMember) => channelMember?.channelId
 			);
