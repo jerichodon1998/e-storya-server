@@ -1,4 +1,4 @@
-import { isMemberOfChannel, isOwnerOfChannel } from '@src/helpers';
+import { isMemberOfChannel } from '@src/helpers';
 import { channelsService } from '@src/lib';
 import { ChannelMemberRoleEnum, ChannelTypeEnum } from '@src/shared/enums';
 import {
@@ -7,7 +7,7 @@ import {
 	IPagination,
 } from '@src/shared/types';
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { isValidObjectId } from 'mongoose';
+import mongoose, { HydratedDocument, isValidObjectId } from 'mongoose';
 
 export async function getUserChannelsController(
 	request: FastifyRequest,
@@ -162,9 +162,11 @@ export async function createChannelController(
 
 export async function updateChannelController(
 	request: FastifyRequest<{
+		Params: {
+			channelId: string;
+		};
 		Body: {
 			name: string;
-			channelId: string;
 			ownerId: string;
 		};
 	}>,
@@ -174,26 +176,20 @@ export async function updateChannelController(
 	error?: any;
 	message?: string;
 }> {
-	const { name, channelId, ownerId } = request.body;
+	const { name, ownerId } = request.body;
+	const { channelId } = request.params;
 	const user = request.user;
 	const { channelMember, error: channelMemberError } =
 		await channelsService.getChannelMember({ channelId, userId: user._id });
-	const isUserOwner =
+	const isAtLeastAMember =
+		!channelMemberError &&
 		channelMember &&
-		isOwnerOfChannel({
+		isMemberOfChannel({
 			role: channelMember?.role,
 			status: channelMember?.status,
 		});
-	const isMemberOwnerOrAdmin =
-		!channelMemberError &&
-		channelMember &&
-		(isUserOwner ||
-			isMemberOfChannel({
-				role: channelMember?.role,
-				status: channelMember?.status,
-			}));
 
-	if (!isMemberOwnerOrAdmin) {
+	if (!isAtLeastAMember) {
 		reply.status(401);
 		return { error: 'Unauthorized' };
 	}
@@ -209,38 +205,85 @@ export async function updateChannelController(
 	const isOwnerTransfer =
 		isValidObjectId(ownerId) &&
 		ownerId?.toString() !== channelToUpdate?.ownerId?.toString() &&
-		channelToUpdate?._id?.toString() === user?._id?.toString();
+		channelToUpdate?.ownerId?.toString() === user?._id?.toString();
 
-	// TODO: do this in a transaction
-	if (isOwnerTransfer) {
-		const { channelMember, error } = await channelsService.updateChannelMember({
-			id: channelToUpdate?._id?.toString(),
-			payload: {
-				role: ChannelMemberRoleEnum.OWNER,
-				userId: ownerId,
-			},
+	try {
+		let channel: HydratedDocument<IChannel> | null | undefined = null;
+
+		await mongoose.connection.transaction(async (session) => {
+			const dateNow = new Date();
+
+			// update channel current and new owner
+			if (isOwnerTransfer) {
+				const { channelMember: newOwner, error: newOwnerError } =
+					await channelsService.getChannelMember({
+						channelId,
+						userId: ownerId,
+						shouldThrowError: true,
+						session,
+					});
+
+				if (!newOwner || newOwnerError) {
+					throw new Error('Channel member not found');
+				}
+
+				const {
+					channelMember: updatedNewChannelOwner,
+					error: updateNewChannelOwnerError,
+				} = await channelsService.updateChannelMember({
+					id: newOwner._id.toString(),
+					payload: {
+						role: ChannelMemberRoleEnum.OWNER,
+						updatedAt: dateNow,
+					},
+					shouldThrowError: true,
+					session,
+				});
+
+				if (!updatedNewChannelOwner || updateNewChannelOwnerError) {
+					throw new Error('New channel owner not updated');
+				}
+
+				const {
+					channelMember: updatedCurrentChannelOwner,
+					error: updateCurrentChannelOwnerError,
+				} = await channelsService.updateChannelMember({
+					id: channelMember._id.toString(),
+					payload: {
+						role: ChannelMemberRoleEnum.MEMBER,
+						updatedAt: dateNow,
+					},
+					shouldThrowError: true,
+					session,
+				});
+
+				if (!updatedCurrentChannelOwner || updateCurrentChannelOwnerError) {
+					throw new Error('Current channel owner not updated');
+				}
+			}
+
+			const { channel: updatedChannel, error } =
+				await channelsService.updateChannel({
+					id: channelId,
+					payload: {
+						name,
+						...(isOwnerTransfer && { ownerId }), // only update ownerId if user is owner
+					},
+					shouldThrowError: true,
+					session,
+				});
+
+			if (!updatedChannel || error) {
+				throw new Error('Channel not updated');
+			}
+
+			channel = updatedChannel;
 		});
 
-		if (!channelMember || error) {
-			reply.status(404);
-			return { error };
-		}
-	}
-
-	const { channel: updatedChannel, error } =
-		await channelsService.updateChannel({
-			id: channelId,
-			payload: {
-				name,
-				...(isUserOwner && ownerId && { ownerId }), // only update ownerId if user is owner
-			},
-		});
-
-	if (error) {
+		reply.status(200);
+		return { channel };
+	} catch (error: any) {
 		reply.status(500);
-		return { error };
+		return { error: error?.message?.toString() || 'Something went wrong' };
 	}
-
-	reply.status(200);
-	return { channel: updatedChannel };
 }
