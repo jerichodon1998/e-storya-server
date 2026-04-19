@@ -9,6 +9,13 @@ import {
 import { FastifyReply, FastifyRequest } from 'fastify';
 import mongoose, { HydratedDocument, isValidObjectId } from 'mongoose';
 
+/**
+ * Get user channels controller.
+ *
+ * @param {FastifyRequest} request
+ * @param {FastifyReply} reply
+ * @return {Promise<{ channels?: IChannel[] | null | undefined; error?: any; message?: string; pagination?: IPagination | undefined; }>}
+ */
 export async function getUserChannelsController(
 	request: FastifyRequest,
 	reply: FastifyReply
@@ -34,6 +41,13 @@ export async function getUserChannelsController(
 	return { channels, pagination };
 }
 
+/**
+ * Get channel controller.
+ *
+ * @param {FastifyRequest<{ Params: { channelId: string; }; }>} request
+ * @param {FastifyReply} reply
+ * @return {Promise<{ channel?: IChannel | null | undefined; error?: any; message?: string; pagination?: IPagination | undefined; }>}
+ */
 export async function getChannelController(
 	request: FastifyRequest<{
 		Params: {
@@ -82,6 +96,13 @@ export async function getChannelController(
 	return { channel };
 }
 
+/**
+ * Get channel members controller.
+ *
+ * @param {FastifyRequest<{ Params: { channelId: string; }; }>} request
+ * @param {FastifyReply} reply
+ * @return {Promise<{ channelMembers?: ChannelMemberWithUser[] | null | undefined; error?: any; message?: string; pagination?: IPagination | undefined; }>}
+ */
 export async function getChannelMembersController(
 	request: FastifyRequest<{
 		Params: {
@@ -127,6 +148,13 @@ export async function getChannelMembersController(
 	return { channelMembers, pagination };
 }
 
+/**
+ * Create channel controller.
+ *
+ * @param {FastifyRequest<{ Body: { name: string; channelType: ChannelTypeEnum; }; }>} request
+ * @param {FastifyReply} reply
+ * @return {Promise<{ channel?: IChannel | null | undefined; error?: any; message?: string; }>}
+ */
 export async function createChannelController(
 	request: FastifyRequest<{
 		Body: {
@@ -183,6 +211,13 @@ export async function createChannelController(
 	}
 }
 
+/**
+ * Update channel controller.
+ *
+ * @param {FastifyRequest<{ Params: { channelId: string; }; Body: { name: string; ownerId: string; }; }>} request
+ * @param {FastifyReply} reply
+ * @return {Promise<{ channel?: IChannel | null | undefined; error?: any; message?: string; }>}
+ */
 export async function updateChannelController(
 	request: FastifyRequest<{
 		Params: {

@@ -6,6 +6,13 @@ import jose from 'jose';
 import { JOSEError } from 'jose/errors';
 import { usersService } from '@src/lib';
 
+/**
+ * Verify JWT token middleware.
+ *
+ * @param {FastifyRequest} request
+ * @param {FastifyReply} reply
+ * @return {Promise<void>}
+ */
 export async function verifyJwtToken(
 	request: FastifyRequest,
 	reply?: FastifyReply

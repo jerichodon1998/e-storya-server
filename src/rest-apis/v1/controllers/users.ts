@@ -5,6 +5,13 @@ import { IUser } from '@src/shared/types';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import jose from 'jose';
 
+/**
+ * Sign in controller.
+ *
+ * @param {FastifyRequest<{ Body: { email: string; password: string; }; }>} request
+ * @param {FastifyReply} reply
+ * @return {Promise<{ user?: Omit<IUser, 'password'> | null | undefined; message?: any; token?: string; error?: any; }>}
+ */
 export async function userSignInController(
 	request: FastifyRequest<{
 		Body: {
@@ -62,6 +69,13 @@ export async function userSignInController(
 	return { user: userCredentials.user, ...(!origin && { token }) };
 }
 
+/**
+ * Sign up controller.
+ *
+ * @param {FastifyRequest<{ Body: { username: string; password: string; email: string; }; }>} request
+ * @param {FastifyReply} reply
+ * @return {Promise<{ message?: string; error?: any; }>}
+ */
 export async function userSignUpController(
 	request: FastifyRequest<{
 		Body: {
@@ -96,6 +110,13 @@ export async function userSignUpController(
 	return { message: 'Ok' };
 }
 
+/**
+ * Get signed in user controller.
+ *
+ * @param {FastifyRequest} request
+ * @param {FastifyReply} reply
+ * @return {Promise<{ user?: Omit<IUser, 'password'> | undefined; message?: string; error?: any; }>}
+ */
 export async function getSignedInUserController(
 	request: FastifyRequest,
 	reply: FastifyReply
