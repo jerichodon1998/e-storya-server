@@ -4,6 +4,7 @@ import { CookieNamesEnum } from '@src/shared/enums';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import jose from 'jose';
 import { JOSEError } from 'jose/errors';
+import { usersService } from '@src/lib';
 
 export async function verifyJwtToken(
 	request: FastifyRequest,
@@ -18,7 +19,16 @@ export async function verifyJwtToken(
 
 	try {
 		const { payload } = await jose.jwtVerify<IUser>(token, encodedJwtSecret);
-		request.user = payload;
+		const { error, user } = await usersService.getUserById({
+			userId: payload?._id || '',
+		});
+
+		if (error || !user) {
+			reply?.status(500);
+			throw new Error('User Error/Not Found');
+		}
+
+		request.user = user;
 	} catch (error) {
 		const joseError = error as JOSEError;
 		console.log('error', joseError?.message);

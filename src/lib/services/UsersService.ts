@@ -90,7 +90,7 @@ class UsersService {
 		}
 
 		try {
-			const user = await User.findOne({ _id: userId });
+			const user = await User.findOne({ _id: userId, deletedAt: null });
 
 			if (!user) {
 				return { error: 'User not found.' };

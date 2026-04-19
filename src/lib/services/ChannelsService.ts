@@ -3,11 +3,13 @@ import {
 	ChannelMemberWithUser,
 	IChannel,
 	IChannelMember,
+	IPagination,
 	IUser,
 } from '@src/shared/types';
 import { Channel, ChannelMember } from '@src/lib/db/schemas';
 import { ChannelMemberStatusEnum } from '@src/shared/enums';
 import { omit } from 'lodash-es';
+import { getPagination } from '@src/helpers';
 
 class ChannelsService {
 	async getChannelById(params: { id: string | ObjectId }): Promise<{
@@ -33,7 +35,7 @@ class ChannelsService {
 	}
 
 	async createChannel(params: { payload: Partial<IChannel> }): Promise<{
-		channel?: HydratedDocument<IChannel> | null;
+		channel?: HydratedDocument<IChannel> | null | undefined;
 		error?: any;
 	}> {
 		const { payload } = params;
@@ -70,17 +72,24 @@ class ChannelsService {
 		}
 	}
 
-	async getChannelsByUserId(params: { userId: string | ObjectId }): Promise<{
+	async getChannelsByUserId(params: {
+		userId: string | ObjectId;
+		page?: number;
+		sizePerPage?: number;
+	}): Promise<{
 		channels?: HydratedDocument<IChannel>[] | null;
+		pagination?: IPagination;
 		error?: any;
 	}> {
-		const { userId } = params;
+		const { userId, page = 1, sizePerPage = 10 } = params;
 
 		if (!isValidObjectId(userId)) {
 			return { error: 'Invalid userId' };
 		}
 
 		try {
+			// TODO: optimize query
+			// For now it's fine without pagination, but in the future we should optimize it
 			const userChannelMembersData = (await ChannelMember.find({
 				userId,
 				deletedAt: null,
@@ -91,38 +100,66 @@ class ChannelsService {
 						ChannelMemberStatusEnum.PENDING,
 					],
 				},
-			}).select('channelId')) as HydratedDocument<
+			})
+				.sort({ createdAt: 'desc' })
+				.select('channelId')) as HydratedDocument<
 				Pick<IChannelMember, 'channelId' | '_id'>
 			>[];
+
 			const userChannelIds = userChannelMembersData.map(
 				(channelMember) => channelMember?.channelId
 			);
 
+			const totalItems = await Channel.find({
+				_id: { $in: userChannelIds },
+				deletedAt: null,
+			}).countDocuments();
+
 			const channels = await Channel.find({
 				_id: { $in: userChannelIds },
 				deletedAt: null,
-			});
+			})
+				.sort({ createdAt: 'desc' })
+				.skip((page - 1) * sizePerPage)
+				.limit(sizePerPage);
 
-			return { channels };
+			return {
+				channels,
+				pagination: getPagination({ page, sizePerPage, totalItems }),
+			};
 		} catch (error) {
-			console.log('error', error);
 			return { error };
 		}
 	}
 
 	async getChannelMembersByChannelId(params: {
 		channelId: string | ObjectId;
+		page?: number;
+		sizePerPage?: number;
 	}): Promise<{
 		channelMembers?: ChannelMemberWithUser[] | null;
 		error?: any;
+		pagination?: IPagination;
 	}> {
-		const { channelId } = params;
+		const { channelId, page = 1, sizePerPage = 10 } = params;
 
 		if (!isValidObjectId(channelId)) {
 			return { error: 'Invalid channelId' };
 		}
 
 		try {
+			const totalItems = await ChannelMember.find({
+				channelId,
+				deletedAt: null,
+				status: {
+					$nin: [
+						ChannelMemberStatusEnum.BANNED,
+						ChannelMemberStatusEnum.REMOVED,
+						ChannelMemberStatusEnum.PENDING,
+					],
+				},
+			}).countDocuments();
+
 			const channelMembers = await ChannelMember.find({
 				channelId,
 				deletedAt: null,
@@ -135,13 +172,20 @@ class ChannelsService {
 				},
 			})
 				.populate<{ userId: IUser }>('userId')
+				.sort({ createdAt: 'desc' })
+				.skip((page - 1) * sizePerPage)
+				.limit(sizePerPage)
 				.exec();
 
 			return {
 				channelMembers: channelMembers as ChannelMemberWithUser[],
+				pagination: getPagination({
+					page,
+					sizePerPage,
+					totalItems: totalItems,
+				}),
 			};
 		} catch (error) {
-			console.log('error', error);
 			return { error };
 		}
 	}
@@ -180,7 +224,6 @@ class ChannelsService {
 
 			return { channelMember };
 		} catch (error) {
-			console.log('error', error);
 			return { error };
 		}
 	}
@@ -200,7 +243,6 @@ class ChannelsService {
 
 			return { channelMember };
 		} catch (error) {
-			console.log('error', error);
 			return { error };
 		}
 	}
@@ -229,7 +271,6 @@ class ChannelsService {
 
 			return { channelMember };
 		} catch (error) {
-			console.log('error', error);
 			return { error };
 		}
 	}

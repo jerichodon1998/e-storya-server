@@ -6,14 +6,7 @@ export async function chatWebsocketRoutes(fastify: FastifyInstance) {
 	fastify.get(
 		'/ws',
 		{ websocket: true },
-		async (
-			socket,
-			request: FastifyRequest<{
-				Querystring: {
-					userId: string;
-				};
-			}>
-		) => {
+		async (socket, request: FastifyRequest) => {
 			try {
 				await verifyJwtToken(request);
 			} catch (error) {

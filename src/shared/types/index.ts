@@ -53,3 +53,12 @@ export interface IChannelMember {
 export type ChannelMemberWithUser = HydratedDocument<IChannelMember> & {
 	userId: IUser;
 };
+
+export interface IPagination {
+	page: number;
+	sizePerPage: number;
+	totalItems: number;
+	totalPages: number;
+	hasPreviousPage: boolean;
+	hasNextPage: boolean;
+}
