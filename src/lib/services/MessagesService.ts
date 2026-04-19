@@ -1,19 +1,22 @@
 import { Message } from '@src/lib/db';
 import { IMessage } from '@src/shared/types';
-import { HydratedDocument } from 'mongoose';
+import mongoose, { HydratedDocument } from 'mongoose';
 
 class MessagesService {
 	async insertMessages(params: {
 		messages: IMessage[];
 		shouldThrowError?: boolean;
+		session?: mongoose.mongo.ClientSession;
 	}): Promise<{
 		messages?: HydratedDocument<IMessage>[];
 		error?: any;
 	}> {
-		const { messages, shouldThrowError } = params;
+		const { messages, shouldThrowError = false, session = undefined } = params;
 
 		try {
-			const messageRes = await Message.insertMany(messages);
+			const messageRes = await Message.insertMany(messages, {
+				...(session && { session }),
+			});
 
 			return { messages: messageRes };
 		} catch (error) {
