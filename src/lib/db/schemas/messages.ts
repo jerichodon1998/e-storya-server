@@ -9,7 +9,13 @@ const messageSchema = new Schema<IMessage>({
 		default: () => new mongoose.Types.ObjectId(),
 	},
 	content: { type: String, required: true },
-	createdAt: { type: Date, required: true, default: () => Date.now() },
+	// createdAt will be indexed for faster messages querying
+	createdAt: {
+		type: Date,
+		required: true,
+		default: () => Date.now(),
+		index: true,
+	},
 	updatedAt: { type: Date },
 	deletedAt: { type: Date },
 	userId: {
