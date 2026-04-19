@@ -143,21 +143,44 @@ export async function createChannelController(
 	const { name, channelType } = request.body;
 	const userId = request.user._id;
 
-	const { channel, error } = await channelsService.createChannel({
-		payload: {
-			name,
-			channelType,
-			ownerId: userId,
-		},
-	});
+	try {
+		let channel: IChannel | null | undefined = null;
+		await mongoose.connection.transaction(async (session) => {
+			const { channel: newChannel } = await channelsService.createChannel({
+				payload: {
+					name,
+					channelType,
+					ownerId: userId,
+				},
+				session,
+				shouldThrowError: true,
+			});
 
-	if (error) {
+			if (!newChannel) {
+				throw new Error('Channel not created');
+			}
+
+			const { channelMember } = await channelsService.createChannelMember({
+				payload: {
+					role: ChannelMemberRoleEnum.OWNER,
+					userId: userId,
+					channelId: newChannel?._id.toString(),
+				},
+				session,
+				shouldThrowError: true,
+			});
+
+			if (!channelMember) {
+				throw new Error('Channel member not created');
+			}
+		});
+
+		reply.status(200);
+		return { channel };
+	} catch (error) {
 		reply.status(500);
 		return { error };
 	}
-
-	reply.status(200);
-	return { channel };
 }
 
 export async function updateChannelController(
