@@ -16,7 +16,7 @@ import { usersService } from '@src/lib';
 export async function verifyJwtToken(
 	request: FastifyRequest,
 	reply?: FastifyReply
-) {
+): Promise<void> {
 	const token = request.cookies?.[CookieNamesEnum.APP_USER_TOKEN_JWT];
 
 	if (!token) {
