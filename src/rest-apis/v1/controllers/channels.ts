@@ -1,4 +1,4 @@
-import { isMemberOfChannel } from '@src/helpers';
+import { getErrorMessage, isMemberOfChannel } from '@src/helpers';
 import { channelsService } from '@src/lib';
 import { ChannelMemberRoleEnum, ChannelTypeEnum } from '@src/shared/enums';
 import {
@@ -34,11 +34,11 @@ export async function getUserChannelsController(
 
 	if (error) {
 		reply.status(500);
-		return { error };
+		return { error, message: getErrorMessage({ error }) };
 	}
 
 	reply.status(200);
-	return { channels, pagination };
+	return { channels, pagination, message: 'Success' };
 }
 
 /**
@@ -69,7 +69,10 @@ export async function getChannelController(
 
 	if (channelMemberError) {
 		reply.status(500);
-		return { error: channelMemberError };
+		return {
+			error: channelMemberError,
+			message: getErrorMessage({ error: channelMemberError }),
+		};
 	}
 
 	if (
@@ -80,7 +83,7 @@ export async function getChannelController(
 		})
 	) {
 		reply.status(401);
-		return { error: 'Unauthorized' };
+		return { error: 'Unauthorized.', message: 'Unauthorized.' };
 	}
 
 	const { channel, error } = await channelsService.getChannelById({
@@ -89,11 +92,11 @@ export async function getChannelController(
 
 	if (error) {
 		reply.status(500);
-		return { error };
+		return { error, message: getErrorMessage({ error }) };
 	}
 
 	reply.status(200);
-	return { channel };
+	return { channel, message: 'Success.' };
 }
 
 /**
@@ -131,7 +134,7 @@ export async function getChannelMembersController(
 		})
 	) {
 		reply.status(401);
-		return { error: 'Unauthorized' };
+		return { error: 'Unauthorized.', message: 'Unauthorized.' };
 	}
 
 	const { channelMembers, error, pagination } =
@@ -141,11 +144,11 @@ export async function getChannelMembersController(
 
 	if (error) {
 		reply.status(500);
-		return { error };
+		return { error, message: getErrorMessage({ error }) };
 	}
 
 	reply.status(200);
-	return { channelMembers, pagination };
+	return { channelMembers, pagination, message: 'Success.' };
 }
 
 /**
@@ -204,10 +207,10 @@ export async function createChannelController(
 		});
 
 		reply.status(200);
-		return { channel };
+		return { channel, message: 'Success.' };
 	} catch (error) {
 		reply.status(500);
-		return { error };
+		return { error, message: getErrorMessage({ error }) };
 	}
 }
 
@@ -249,7 +252,7 @@ export async function updateChannelController(
 
 	if (!isAtLeastAMember) {
 		reply.status(401);
-		return { error: 'Unauthorized' };
+		return { error: 'Unauthorized', message: 'Unauthorized.' };
 	}
 
 	const { channel: channelToUpdate, error: channelToUpdateError } =
@@ -257,7 +260,7 @@ export async function updateChannelController(
 
 	if (!channelToUpdate || channelToUpdateError) {
 		reply.status(404);
-		return { error: 'Channel not found' };
+		return { error: 'Channel not found', message: 'Channel not found.' };
 	}
 
 	const isOwnerTransfer =
@@ -339,9 +342,11 @@ export async function updateChannelController(
 		});
 
 		reply.status(200);
-		return { channel };
+		return { channel, message: 'Success.' };
 	} catch (error: any) {
 		reply.status(500);
-		return { error: error?.message?.toString() || 'Something went wrong' };
+		return { error, message: getErrorMessage({ error }) };
 	}
 }
+
+// TODO: implement invite user to channel

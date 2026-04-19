@@ -3,6 +3,7 @@ import {
 	ChannelMemberStatusEnum,
 } from '@src/shared/enums';
 import { IPagination } from '@src/shared/types';
+import { isEmpty, isString } from 'lodash-es';
 
 /**
  * Checks if the user is a member of the channel.
@@ -83,4 +84,28 @@ export function getPagination(params: {
 		hasPreviousPage,
 		hasNextPage,
 	};
+}
+
+/**
+ * Get possible error message from the error object.
+ *
+ * @param {any} params.error
+ * @return {string}
+ */
+export function getErrorMessage(params: { error: any }): string {
+	const { error } = params;
+	let errorMessage = '';
+
+	if (isString(error)) {
+		return error;
+	}
+
+	errorMessage = isString(error?.message) ? error?.message : '';
+
+	// log if it's an unknown error
+	if (isEmpty(errorMessage)) {
+		console.error('errorMessage', errorMessage);
+	}
+
+	return errorMessage || 'Something went wrong.';
 }

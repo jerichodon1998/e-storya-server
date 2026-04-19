@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@src/helpers';
 import { usersService } from '@src/lib';
 import { encodedJwtSecret } from '@src/shared/constants';
 import { CookieNamesEnum, SignUpMethodEnum } from '@src/shared/enums';
@@ -29,33 +30,39 @@ export async function userSignInController(
 	const { email, password } = request.body;
 	const origin = URL.parse(request.headers.origin || '');
 
-	const userCredentials = await usersService.signinWithEmailAndPassword({
-		email: email,
-		password: password,
-	});
+	const { user: userCredentials, error: userCredentialsError } =
+		await usersService.signinWithEmailAndPassword({
+			email: email,
+			password: password,
+		});
 
-	if (!userCredentials.user) {
-		reply.status(401);
-		return { message: userCredentials.error };
+	if (userCredentialsError) {
+		reply.status(400);
+		return {
+			error: userCredentialsError,
+			message: getErrorMessage({ error: userCredentialsError }),
+		};
+	} else if (!userCredentials) {
+		reply.status(404);
+		return { error: 'User not found', message: 'User not found.' };
 	}
 
 	const tokenExpiryDate = new Date(Date.now() + 60 * 60 * 1000); // 1hr
 	let token = '';
 	try {
-		token = await new jose.SignJWT(userCredentials.user)
+		token = await new jose.SignJWT(userCredentials)
 			.setExpirationTime(tokenExpiryDate)
 			.setProtectedHeader({ alg: 'HS256' })
 			.sign(encodedJwtSecret);
 	} catch (error: any) {
 		reply.status(500);
 		return {
-			message: error?.message?.toString() || 'Something went wrong',
 			error,
+			message: getErrorMessage({ error }),
 		};
 	}
 
 	if (origin?.hostname) {
-		console.log('set cookie');
 		reply.setCookie(CookieNamesEnum.APP_USER_TOKEN_JWT, token, {
 			path: '/',
 			secure: true,
@@ -66,7 +73,7 @@ export async function userSignInController(
 	}
 
 	reply.status(200);
-	return { user: userCredentials.user, ...(!origin && { token }) };
+	return { user: userCredentials, ...(!origin && { token }) };
 }
 
 /**
@@ -99,15 +106,15 @@ export async function userSignUpController(
 	});
 
 	if (!user || error) {
-		reply.status(500);
+		reply.status(400);
 		return {
-			message: error?.message?.toString() || 'Something went wrong',
 			error,
+			message: getErrorMessage({ error }),
 		};
 	}
 
 	reply.status(200);
-	return { message: 'Ok' };
+	return { message: 'Success.' };
 }
 
 /**
@@ -129,15 +136,18 @@ export async function getSignedInUserController(
 
 	if (!userId) {
 		reply.status(401);
-		return { error: 'No userId provided' };
+		return { error: 'No userId provided', message: 'No userId provided.' };
 	}
 
 	try {
 		const { user, error } = await usersService.getUserById({ userId });
 
 		if (error) {
-			reply.status(500);
-			return { error };
+			reply.status(400);
+			return { error, message: getErrorMessage({ error }) };
+		} else if (!user) {
+			reply.status(404);
+			return { error: 'User not found', message: 'User not found.' };
 		}
 
 		const parsedUserToObject = user?.toObject();
@@ -147,6 +157,6 @@ export async function getSignedInUserController(
 		return { user: parsedUserToObject };
 	} catch (error) {
 		reply.status(500);
-		return { error };
+		return { error, message: getErrorMessage({ error }) };
 	}
 }
