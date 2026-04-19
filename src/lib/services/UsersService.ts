@@ -95,11 +95,12 @@ class UsersService {
 				await bcrypt
 					.hash(password, 10)
 					.then(async (hash) => {
-						const newUser = await User.insertOne({
+						const newUser = new User({
 							username,
 							password: hash,
 							email,
 						});
+						await newUser.save({ ...(session && { session }) });
 
 						userData = newUser.toObject();
 						delete userData.password;
