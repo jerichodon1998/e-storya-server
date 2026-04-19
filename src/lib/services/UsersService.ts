@@ -9,6 +9,15 @@ import { SignUpMethodEnum } from '@src/shared/enums';
 import { IUser } from '@src/shared/types';
 
 class UsersService {
+	/**
+	 * Sign in with email and password.
+	 *
+	 * @param {string} params.email
+	 * @param {string} params.password
+	 * @param {mongoose.mongo.ClientSession} params.session
+	 * @param {boolean} params.shouldThrowError
+	 * @return {Promise<{ user?: Omit<IUser, 'password'> | null; error?: any; }>}
+	 */
 	async signinWithEmailAndPassword(params: {
 		email: string;
 		password: string;
@@ -61,6 +70,17 @@ class UsersService {
 		return { user: parsedUserToObject };
 	}
 
+	/**
+	 * Create new user.
+	 *
+	 * @param {string} params.username
+	 * @param {string} params.password
+	 * @param {string} params.email
+	 * @param {SignUpMethodEnum} params.method
+	 * @param {mongoose.mongo.ClientSession} params.session
+	 * @param {boolean} params.shouldThrowError
+	 * @return {Promise<{ user?: Omit<IUser, 'password'> | null; error?: any; }>}
+	 */
 	async createNewUser(params: {
 		username: string;
 		password: string;
@@ -122,6 +142,14 @@ class UsersService {
 		return { user: userData };
 	}
 
+	/**
+	 * Get user by ID.
+	 *
+	 * @param {string | ObjectId} params.userId
+	 * @param {mongoose.mongo.ClientSession} params.session
+	 * @param {boolean} params.shouldThrowError
+	 * @return {Promise<{ user?: Omit<HydratedDocument<IUser>, 'password'> | null; error?: any; }>}
+	 */
 	async getUserById(params: {
 		userId: string | ObjectId;
 		session?: mongoose.mongo.ClientSession;

@@ -16,6 +16,14 @@ import { omit } from 'lodash-es';
 import { getPagination } from '@src/helpers';
 
 class ChannelsService {
+	/**
+	 * Get channel by ID.
+	 *
+	 * @param {string | ObjectId} params.id - The ID of the channel.
+	 * @param {boolean} params.shouldThrowError=false - Whether to throw an error.
+	 * @param {mongoose.mongo.ClientSession} params.session - The Mongoose session for transaction.
+	 * @return {Promise<{ channel?: HydratedDocument<IChannel> | null; error?: any; }>}
+	 */
 	async getChannelById(params: {
 		id: string | ObjectId;
 		shouldThrowError?: boolean;
@@ -55,6 +63,14 @@ class ChannelsService {
 		}
 	}
 
+	/**
+	 * Create a channel.
+	 *
+	 * @param {Partial<IChannel>} params.payload - The payload to create the channel with.
+	 * @param {boolean} params.shouldThrowError=false - Whether to throw an error.
+	 * @param {mongoose.mongo.ClientSession} params.session - The Mongoose session for transaction.
+	 * @return {Promise<{ channel?: HydratedDocument<IChannel> | null | undefined; error?: any; }>}
+	 */
 	async createChannel(params: {
 		payload: Partial<IChannel>;
 		shouldThrowError?: boolean;
@@ -79,6 +95,15 @@ class ChannelsService {
 		}
 	}
 
+	/**
+	 * Update a channel.
+	 *
+	 * @param {string | ObjectId} params.id - The ID of the channel to update.
+	 * @param {Partial<IChannel>} params.payload - The payload to update the channel with.
+	 * @param {boolean} params.shouldThrowError=false - Whether to throw an error.
+	 * @param {mongoose.mongo.ClientSession} params.session - The Mongoose session for transaction.
+	 * @return {Promise<{ channel?: HydratedDocument<IChannel> | null; error?: any; }>}
+	 */
 	async updateChannel(params: {
 		id: string | ObjectId;
 		payload: Partial<IChannel>;
@@ -114,6 +139,16 @@ class ChannelsService {
 		}
 	}
 
+	/**
+	 * Get channels by user ID.
+	 *
+	 * @param {string | ObjectId} params.userId - The ID of the user to get channels for.
+	 * @param {number} params.page - The page number to get channels for.
+	 * @param {number} params.sizePerPage - The size per page to get channels for.
+	 * @param {boolean} params.shouldThrowError=false - Whether to throw an error.
+	 * @param {mongoose.mongo.ClientSession} params.session - The Mongoose session for transaction.
+	 * @return {Promise<{ channels?: HydratedDocument<IChannel>[] | null; pagination?: IPagination; error?: any; }>}
+	 */
 	async getChannelsByUserId(params: {
 		userId: string | ObjectId;
 		page?: number;
@@ -202,6 +237,16 @@ class ChannelsService {
 		}
 	}
 
+	/**
+	 * Get channel members by channel ID.
+	 *
+	 * @param {string | ObjectId} params.channelId - The ID of the channel to get channel members for.
+	 * @param {number} params.page - The page number to get channel members for.
+	 * @param {number} params.sizePerPage - The size per page to get channel members for.
+	 * @param {boolean} params.shouldThrowError=false - Whether to throw an error.
+	 * @param {mongoose.mongo.ClientSession} params.session - The Mongoose session for transaction.
+	 * @return {Promise<{ channelMembers?: ChannelMemberWithUser[] | null; error?: any; pagination?: IPagination; }>}
+	 */
 	async getChannelMembersByChannelId(params: {
 		channelId: string | ObjectId;
 		page?: number;
@@ -284,6 +329,20 @@ class ChannelsService {
 		}
 	}
 
+	/**
+	 * Get a channel member.
+	 * Either provide the following to get the channel member:
+	 * - channelMemberId
+	 * - userId & channelId
+	 *
+	 *
+	 * @param {string | ObjectId} params.channelMemberId - The ID of the channel member to get.
+	 * @param {string | ObjectId} params.userId - The ID of the user to get the channel member for.
+	 * @param {string | ObjectId} params.channelId - The ID of the channel to get the channel member for.
+	 * @param {boolean} params.shouldThrowError=false - Whether to throw an error.
+	 * @param {mongoose.mongo.ClientSession} params.session - The Mongoose session for transaction.
+	 * @return {Promise<{ channelMember?: IChannelMember | null; error?: any; }>}
+	 */
 	async getChannelMember(params: {
 		channelMemberId?: string | ObjectId;
 		userId?: string | ObjectId;
@@ -342,6 +401,14 @@ class ChannelsService {
 		}
 	}
 
+	/**
+	 * Create a channel member.
+	 *
+	 * @param {Partial<IChannelMember>} params.payload - The payload to create the channel member with.
+	 * @param {boolean} params.shouldThrowError=false - Whether to throw an error.
+	 * @param {mongoose.mongo.ClientSession} params.session - The Mongoose session for transaction.
+	 * @return {Promise<{ channelMember?: Partial<IChannelMember> | null; error?: any; }>}
+	 */
 	async createChannelMember(params: {
 		payload: Partial<IChannelMember>;
 		shouldThrowError?: boolean;
@@ -368,6 +435,15 @@ class ChannelsService {
 		}
 	}
 
+	/**
+	 * Update a channel member.
+	 *
+	 * @param {string | ObjectId} params.id - The ID of the channel member to update.
+	 * @param {Partial<IChannelMember>} params.payload - The payload to update the channel member with.
+	 * @param {boolean} params.shouldThrowError=false - Whether to throw an error.
+	 * @param {mongoose.mongo.ClientSession} params.session - The Mongoose session for transaction.
+	 * @return {Promise<{ channelMember?: Partial<IChannelMember> | null; error?: any; }>}
+	 */
 	async updateChannelMember(params: {
 		id: string | ObjectId;
 		payload: Partial<IChannelMember>;

@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
 
-async function mongooseInit() {
+/**
+ * Initializes the Mongoose connection.
+ * @return {Promise<void>}
+ */
+async function mongooseInit(): Promise<void> {
 	try {
 		await mongoose.connect(process.env.MONGODB_URI || '');
 		console.log('mongooseInit()');

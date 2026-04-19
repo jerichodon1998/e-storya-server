@@ -3,6 +3,14 @@ import { IMessage } from '@src/shared/types';
 import mongoose, { HydratedDocument } from 'mongoose';
 
 class MessagesService {
+	/**
+	 * Insert messages.
+	 *
+	 * @param {IMessage[]} params.messages
+	 * @param {boolean} params.shouldThrowError=false
+	 * @param {mongoose.mongo.ClientSession} params.session
+	 * @return {Promise<{ messages?: HydratedDocument<IMessage>[]; error?: any; }>}
+	 */
 	async insertMessages(params: {
 		messages: IMessage[];
 		shouldThrowError?: boolean;

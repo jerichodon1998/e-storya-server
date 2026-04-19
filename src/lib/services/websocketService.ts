@@ -25,7 +25,13 @@ class WebSocketService {
 	 */
 	private usersToChannels: Map<string, Set<string>> = new Map();
 
-	private logClients() {
+	/**
+	 * Logs the clients.
+	 * - this is for debugging purposes only.
+	 *
+	 * @return {void}
+	 */
+	private logClients(): void {
 		console.log('usersToSockets:', this.usersToSockets.size);
 		console.log('channelsToUsers:', this.channelsToUsers.size);
 		console.log('usersToChannels:', this.usersToChannels.size);
@@ -52,6 +58,13 @@ class WebSocketService {
 		);
 	}
 
+	/**
+	 * Initializes user channel subscribe.
+	 *
+	 * @param {string | ObjectId} params.userId
+	 * @param {WebSocket} params.socket
+	 * @return {Promise<void>}
+	 */
 	private async initUserChannelSubscribe(params: {
 		userId: string | ObjectId;
 		socket: WebSocket;
@@ -90,6 +103,14 @@ class WebSocketService {
 		}
 	}
 
+	/**
+	 * Initializes user socket.
+	 * - sets the socket to the user's set of sockets.
+	 *
+	 * @param {string | ObjectId} params.userId
+	 * @param {WebSocket} params.socket
+	 * @return {void}
+	 */
 	private initUserSocket(params: {
 		userId: string | ObjectId;
 		socket: WebSocket;
@@ -103,8 +124,20 @@ class WebSocketService {
 		this.usersToSockets.get(userId?.toString())?.add(socket);
 	}
 
+	/**
+	 * Register socket.
+	 * - initializes the user channel subscribe
+	 * - sets the socket to the user's set of sockets
+	 *
+	 * @param {string} params.userId
+	 * @param {WebSocket} params.socket
+	 * @return {Promise<void>}
+	 */
 	// TODO: implement ping pong to check if client is still connected.
-	async registerSocket(params: { userId: string; socket: WebSocket }) {
+	async registerSocket(params: {
+		userId: string;
+		socket: WebSocket;
+	}): Promise<void> {
 		const { socket, userId } = params;
 
 		try {
@@ -160,7 +193,14 @@ class WebSocketService {
 		});
 	}
 
-	private cleanup(params: { userId: string; socket: WebSocket }) {
+	/**
+	 * Cleanup WebSocket and any in-memory [usersToSockets, usersToChannels, channelsToUsers] related data.
+	 *
+	 * @param {string} params.userId
+	 * @param {WebSocket} params.socket
+	 * @return {void}
+	 */
+	private cleanup(params: { userId: string; socket: WebSocket }): void {
 		console.log('cleanup()');
 		const { userId, socket } = params;
 
@@ -193,6 +233,13 @@ class WebSocketService {
 		}
 	}
 
+	/**
+	 * Unsubscribe user from channel.
+	 *
+	 * @param {string | ObjectId} params.userId
+	 * @param {string | ObjectId} params.channelId
+	 * @return {void}
+	 */
 	// TODO: implement subscribe user to channel
 	unsubscribeUserFromChannel(params: {
 		userId: string | ObjectId;
@@ -225,7 +272,15 @@ class WebSocketService {
 		}
 	}
 
-	async broadcast(params: { message: string | Record<string, any> }) {
+	/**
+	 * Broadcast message to all users in the channel.
+	 *
+	 * @param {string | Record<string, any>} params.message
+	 * @return {Promise<void>}
+	 */
+	async broadcast(params: {
+		message: string | Record<string, any>;
+	}): Promise<void> {
 		const parsedMessage: IMessage =
 			typeof params.message === 'string'
 				? JSON.parse(params.message)
