@@ -49,8 +49,14 @@ class MessagesService {
 	/**
 	 * Get messages Cursor.
 	 * - this is a cursor based query.
+	 * @param {string | ObjectId} params.channelId
+	 * @param {number} params.batchSize - default 20
+	 * @return {Promise<{ cursor?: mongoose.Cursor<IMessage & Required<{ _id: string | mongoose.Schema.Types.ObjectId; }>> | null; error?: any; message?: string; }>}
 	 */
-	getMessagesCursor(params: { channelId: string | ObjectId }): {
+	getMessagesCursor(params: {
+		channelId: string | ObjectId;
+		batchSize?: number;
+	}): {
 		/**
 		 * TODO: Improve this type annotation in the future, I just copy pasted this when I hovered the `const cursor` HAHA!
 		 * PS: I'm not sure if this is the best way to do this, but I don't know how to do it better.
@@ -74,7 +80,7 @@ class MessagesService {
 		error?: any;
 		message?: string;
 	} {
-		const { channelId } = params;
+		const { channelId, batchSize = 20 } = params;
 
 		try {
 			/**
@@ -91,7 +97,7 @@ class MessagesService {
 				}
 			)
 				.sort({ createdAt: -1, _id: -1 })
-				.batchSize(20)
+				.batchSize(batchSize)
 				.cursor();
 
 			return { cursor, message: 'Success.' };
