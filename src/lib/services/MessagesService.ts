@@ -10,11 +10,11 @@ class MessagesService {
 	 * @param {IMessage[]} params.messages
 	 * @param {boolean } params.shouldThrowError = false
 	 * @param {mongoose.mongo.ClientSession} params.session
-	 * @param {boolean} params.enableLean = true
+	 * @param {boolean} params.enableLean = false
 	 * @return {Promise<{ messages?: (HydratedDocument<IMessage>|IMessage)[]; error?: any; message?: string; }>}
 	 */
 	async insertMessages(params: {
-		messages: IMessage[];
+		messages: Partial<IMessage>[];
 		shouldThrowError?: boolean;
 		session?: mongoose.mongo.ClientSession;
 		enableLean?: boolean;
@@ -27,7 +27,7 @@ class MessagesService {
 			messages,
 			shouldThrowError = false,
 			session = undefined,
-			enableLean = true,
+			enableLean = false,
 		} = params;
 
 		try {
@@ -47,60 +47,53 @@ class MessagesService {
 	}
 
 	/**
-	 * Get messages Cursor.
+	 * Get messages.
 	 * - this is a cursor based query.
 	 * @param {string | ObjectId} params.channelId
-	 * @param {number} params.batchSize - default 20
-	 * @return {Promise<{ cursor?: mongoose.Cursor<IMessage & Required<{ _id: string | mongoose.Schema.Types.ObjectId; }>> | null; error?: any; message?: string; }>}
+	 * @param {string | ObjectId} params.lastMessageIdSeen
+	 * @param {number} params.sizePerPage - default 20
+	 * @return {Promise<{ messages?: IMessage[] | null | undefined; error?: any; message?: string; }>}
 	 */
-	getMessagesCursor(params: {
+	async getMessages(params: {
 		channelId: string | ObjectId;
-		batchSize?: number;
-	}): {
-		/**
-		 * TODO: Improve this type annotation in the future, I just copy pasted this when I hovered the `const cursor` HAHA!
-		 * PS: I'm not sure if this is the best way to do this, but I don't know how to do it better.
-		 */
-		cursor?: mongoose.Cursor<
-			IMessage &
-				Required<{
-					_id: string | mongoose.Schema.Types.ObjectId;
-				}> & {
-					__v: number;
-				},
-			mongoose.QueryOptions<IMessage>,
-			| (IMessage &
-					Required<{
-						_id: string | mongoose.Schema.Types.ObjectId;
-					}> & {
-						__v: number;
-					})
-			| null
-		>;
+		lastSeenMessageId?: string | ObjectId | undefined | null;
+		lastSeenMessageCreatedAt?: Date | undefined | null;
+		sizePerPage?: number;
+	}): Promise<{
+		messages?: IMessage[];
 		error?: any;
 		message?: string;
-	} {
-		const { channelId, batchSize = 20 } = params;
+	}> {
+		const {
+			channelId,
+			lastSeenMessageId = undefined,
+			lastSeenMessageCreatedAt = undefined,
+			sizePerPage = 5,
+		} = params;
 
 		try {
-			/**
-			 * NOTE: Should explicity close the cursor when done.
-			 */
-			const cursor = Message.find(
+			const messages = await Message.find(
 				{
 					channelId,
 					deletedAt: null,
+					...(lastSeenMessageId &&
+						lastSeenMessageCreatedAt && {
+							$or: [
+								{ createdAt: { $lt: lastSeenMessageCreatedAt } },
+								{
+									createdAt: lastSeenMessageCreatedAt,
+									_id: { $lt: lastSeenMessageId },
+								},
+							],
+						}),
 				},
 				null,
-				{
-					lean: true,
-				}
+				{ lean: true }
 			)
 				.sort({ createdAt: -1, _id: -1 })
-				.batchSize(batchSize)
-				.cursor();
+				.limit(sizePerPage);
 
-			return { cursor, message: 'Success.' };
+			return { message: 'Success.', messages };
 		} catch (error) {
 			return { error, message: getErrorMessage({ error }) };
 		}
