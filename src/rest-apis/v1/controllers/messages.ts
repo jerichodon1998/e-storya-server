@@ -47,7 +47,7 @@ export async function getMessagesController(
 }> {
 	const { channelId } = request.params;
 	const {
-		sizePerPage = 1,
+		sizePerPage = 20,
 		lastSeenMessageId,
 		lastSeenMessageCreatedAt,
 	} = request.query;

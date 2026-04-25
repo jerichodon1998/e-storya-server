@@ -68,7 +68,7 @@ class MessagesService {
 			channelId,
 			lastSeenMessageId = undefined,
 			lastSeenMessageCreatedAt = undefined,
-			sizePerPage = 5,
+			sizePerPage = 20,
 		} = params;
 
 		try {
