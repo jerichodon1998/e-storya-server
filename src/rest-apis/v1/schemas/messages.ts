@@ -16,6 +16,12 @@ export const getMessagesSchema: FastifySchema = {
 			sizePerPage: {
 				type: 'number',
 			},
+			lastSeenMessageId: {
+				type: 'string',
+			},
+			lastSeenMessageCreatedAt: {
+				type: 'string',
+			},
 		},
 	},
 };
