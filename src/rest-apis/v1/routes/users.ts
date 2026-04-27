@@ -1,9 +1,14 @@
 import { FastifyInstance } from 'fastify';
-import { userSignInSchema, userSignUpSchema } from '@rest-apis/v1/schemas';
+import {
+	searchUsersSchema,
+	userSignInSchema,
+	userSignUpSchema,
+} from '@rest-apis/v1/schemas';
 import {
 	userSignInController,
 	userSignUpController,
 	getSignedInUserController,
+	searchUsersController,
 } from '@rest-apis/v1/controllers';
 
 export async function userRoutes(fastify: FastifyInstance) {
@@ -26,5 +31,13 @@ export async function userRoutes(fastify: FastifyInstance) {
 		url: '/signed-in-user',
 		preHandler: fastify.auth([fastify.verifyJwtToken]),
 		handler: getSignedInUserController,
+	});
+
+	fastify.route({
+		method: 'GET',
+		url: '/search',
+		preHandler: fastify.auth([fastify.verifyJwtToken]),
+		schema: searchUsersSchema,
+		handler: searchUsersController,
 	});
 }

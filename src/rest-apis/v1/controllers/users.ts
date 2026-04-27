@@ -160,3 +160,34 @@ export async function getSignedInUserController(
 		return { error, message: getErrorMessage({ error }) };
 	}
 }
+
+export async function searchUsersController(
+	request: FastifyRequest<{
+		Querystring: {
+			lastSeenUsername?: string;
+			sizePerPage?: number;
+			searchText: string;
+		};
+	}>,
+	reply: FastifyReply
+): Promise<{
+	users?: IUser[] | null | undefined;
+	error?: any;
+	message: string;
+}> {
+	const { lastSeenUsername, sizePerPage = 20, searchText } = request.query;
+
+	const { users, error } = await usersService.searchUsers({
+		sizePerPage,
+		searchText,
+		...(lastSeenUsername && { lastSeenUsername }),
+	});
+
+	if (error) {
+		reply.status(500);
+		return { error, message: getErrorMessage({ error }) };
+	}
+
+	reply.status(200);
+	return { users, message: 'Success.' };
+}

@@ -36,3 +36,21 @@ export const userSignUpSchema: FastifySchema = {
 		required: ['username', 'password', 'email'],
 	},
 };
+
+export const searchUsersSchema: FastifySchema = {
+	querystring: {
+		type: 'object',
+		additionalProperties: false,
+		properties: {
+			sizePerPage: {
+				type: 'number',
+			},
+			lastSeenUsername: {
+				type: 'string',
+			},
+			searchText: {
+				type: 'string',
+			},
+		},
+	},
+};

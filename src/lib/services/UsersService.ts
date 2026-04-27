@@ -7,6 +7,8 @@ import mongoose, {
 } from 'mongoose';
 import { SignUpMethodEnum } from '@src/shared/enums';
 import { IUser } from '@src/shared/types';
+import { getErrorMessage } from '@src/helpers';
+import { isEmpty } from 'lodash-es';
 
 class UsersService {
 	/**
@@ -191,6 +193,71 @@ class UsersService {
 			}
 
 			return { error };
+		}
+	}
+
+	/**
+	 * Search users.
+	 * - Cursor based query.
+	 *
+	 * @param params
+	 * @returns {Promise<{ users?: IUser[] | null | undefined; error?: any; message?: string; }>}
+	 */
+	async searchUsers(params: {
+		sizePerPage?: number;
+		lastSeenUsername?: string;
+		searchText: string;
+		session?: mongoose.mongo.ClientSession;
+		shouldThrowError?: boolean;
+	}): Promise<{
+		users?: IUser[];
+		error?: any;
+		message: string;
+	}> {
+		const {
+			sizePerPage = 20,
+			lastSeenUsername = '',
+			searchText,
+			session = undefined,
+			shouldThrowError = false,
+		} = params;
+
+		if (!searchText) {
+			if (shouldThrowError) {
+				throw new Error('Search text cannot be empty.');
+			}
+
+			return {
+				error: 'Search text cannot be empty.',
+				message: 'Search text cannot be empty.',
+			};
+		}
+
+		try {
+			const users = await User.find(
+				{
+					username: {
+						$regex: searchText,
+						$options: 'i',
+						...(!isEmpty(lastSeenUsername) ? { $gt: lastSeenUsername } : {}),
+					},
+					deletedAt: null,
+				},
+				null,
+				{
+					...(session && { session }),
+				}
+			)
+				.sort({ username: 1 })
+				.limit(sizePerPage);
+
+			return { users, message: 'Success.' };
+		} catch (error) {
+			if (shouldThrowError) {
+				throw error;
+			}
+
+			return { error, message: getErrorMessage({ error }) };
 		}
 	}
 }
