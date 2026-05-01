@@ -4,6 +4,7 @@ import {
 } from '@src/shared/enums';
 import { IPagination } from '@src/shared/types';
 import { isEmpty, isString } from 'lodash-es';
+import { isValidObjectId, ObjectId } from 'mongoose';
 
 /**
  * Checks if the user is a member of the channel.
@@ -108,4 +109,56 @@ export function getErrorMessage(params: { error: any }): string {
 	}
 
 	return errorMessage || 'Something went wrong.';
+}
+
+/**
+ * Get direct message unique key.
+ *
+ * @param {(string | ObjectId)[]} ids
+ * @return {string}
+ */
+export function getDirectMessageUniqueKey(
+	ids: [string | ObjectId, string | ObjectId]
+): string {
+	if (ids.length !== 2 || !Array.isArray(ids)) {
+		throw new Error('getDirectMessageUniqueKey() ids must be of length 2.');
+	}
+
+	const id1 = ids[0];
+	const id2 = ids[1];
+
+	if (!isValidObjectId(id1) || !isValidObjectId(id2)) {
+		throw new Error('getDirectMessageUniqueKey() Invalid objectId');
+	}
+
+	return [id1.toString(), id2.toString()].sort().join('-');
+}
+
+/**
+ * Validates the direct message unique key.
+ *
+ * @param {string} directMessageUniqueKey
+ * @return {boolean}
+ */
+export function validateDirectMessageUniqueKey(
+	directMessageUniqueKey: string
+): boolean {
+	if (isEmpty(directMessageUniqueKey) || !isString(directMessageUniqueKey)) {
+		return false;
+	}
+
+	const directMessageUniqueKeyArray = directMessageUniqueKey.split('-');
+
+	if (directMessageUniqueKeyArray.length !== 2) {
+		return false;
+	}
+
+	const userId1 = directMessageUniqueKeyArray[0];
+	const userId2 = directMessageUniqueKeyArray[1];
+
+	if (!isValidObjectId(userId1) || !isValidObjectId(userId2)) {
+		return false;
+	}
+
+	return true;
 }

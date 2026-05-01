@@ -1,4 +1,4 @@
-import { websocketService } from '@src/lib/services/WebsocketService';
+import { websocketService } from '@src/lib';
 import { verifyJwtToken } from '@src/rest-apis/v1/middlewares';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 

@@ -3,9 +3,9 @@ import { FastifySchema } from 'fastify';
 export const getMessagesSchema: FastifySchema = {
 	params: {
 		type: 'object',
-		required: ['channelId'],
+		required: ['conversationKey'],
 		properties: {
-			channelId: {
+			conversationKey: {
 				type: 'string',
 			},
 		},

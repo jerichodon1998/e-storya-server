@@ -29,6 +29,8 @@ const channelMembersSchema = new Schema<IChannelMember>({
 	},
 });
 
+channelMembersSchema.index({ userId: 1, channelId: 1 }, { unique: true }); // a user can only have one document record per channel
+
 const ChannelMember = model<IChannelMember>(
 	CollectionNamesEnum.CHANNEL_MEMBERS,
 	channelMembersSchema,

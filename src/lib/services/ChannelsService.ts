@@ -7,13 +7,23 @@ import {
 	ChannelMemberWithUser,
 	IChannel,
 	IChannelMember,
+	IChannelWithDirectMessageChannelMembers,
 	IPagination,
 	IUser,
 } from '@src/shared/types';
-import { Channel, ChannelMember } from '@src/lib/db/schemas';
-import { ChannelMemberStatusEnum } from '@src/shared/enums';
-import { omit } from 'lodash-es';
-import { getPagination } from '@src/helpers';
+import {
+	Channel,
+	ChannelDirectMessage,
+	ChannelGroup,
+	ChannelMember,
+} from '@src/lib/db/schemas';
+import { ChannelMemberStatusEnum, ChannelTypeEnum } from '@src/shared/enums';
+import { map, omit } from 'lodash-es';
+import {
+	getErrorMessage,
+	getPagination,
+	validateDirectMessageUniqueKey,
+} from '@src/helpers';
 
 class ChannelsService {
 	/**
@@ -25,23 +35,39 @@ class ChannelsService {
 	 * @return {Promise<{ channel?: HydratedDocument<IChannel> | null; error?: any; }>}
 	 */
 	async getChannelById(params: {
-		id: string | ObjectId;
+		id?: string | ObjectId;
+		directMessageUniqueKey?: string;
 		shouldThrowError?: boolean;
 		session?: mongoose.mongo.ClientSession;
 	}): Promise<{
 		channel?: HydratedDocument<IChannel> | null;
 		error?: any;
 	}> {
-		const { id, shouldThrowError = false, session = undefined } = params;
+		const {
+			id,
+			directMessageUniqueKey,
+			shouldThrowError = false,
+			session = undefined,
+		} = params;
+
+		if (!id && directMessageUniqueKey) {
+			if (shouldThrowError) {
+				throw new Error('Invalid channelId');
+			}
+
+			return { error: 'Invalid channelId' };
+		}
 
 		try {
 			const channel = session
 				? await Channel.findOne({
-						_id: id,
+						...(id && { _id: id }),
+						...(directMessageUniqueKey && { directMessageUniqueKey }),
 						deletedAt: null,
 					}).session(session)
 				: await Channel.findOne({
-						_id: id,
+						...(id && { _id: id }),
+						...(directMessageUniqueKey && { directMessageUniqueKey }),
 						deletedAt: null,
 					});
 
@@ -73,25 +99,67 @@ class ChannelsService {
 	 */
 	async createChannel(params: {
 		payload: Partial<IChannel>;
+		upsert?: boolean;
 		shouldThrowError?: boolean;
 		session?: mongoose.mongo.ClientSession;
 	}): Promise<{
 		channel?: HydratedDocument<IChannel> | null | undefined;
 		error?: any;
+		message: string;
 	}> {
-		const { payload, shouldThrowError = false, session = undefined } = params;
+		const {
+			payload,
+			shouldThrowError = false,
+			session = undefined,
+			upsert = false,
+		} = params;
+		const isDirectMessage =
+			payload.channelType === ChannelTypeEnum.DIRECT_MESSAGE;
 
 		try {
-			const channel = new Channel(payload);
-			await channel.save({ ...(session && { session }) });
+			let channel: HydratedDocument<IChannel> | null | undefined = null;
 
-			return { channel };
+			if (upsert) {
+				channel = isDirectMessage
+					? await ChannelDirectMessage.findOneAndUpdate(
+							{
+								directMessageUniqueKey: payload?.directMessageUniqueKey || '',
+							},
+							{ ...payload },
+							{
+								upsert: true,
+								returnDocument: 'after',
+								...(session && { session }),
+							}
+						)
+					: await ChannelGroup.findOneAndUpdate(
+							{
+								_id: payload?._id || '',
+							},
+							{ ...payload },
+							{
+								upsert: true,
+								returnDocument: 'after',
+								...(session && { session }),
+							}
+						);
+			} else {
+				channel = isDirectMessage
+					? new ChannelDirectMessage(payload)
+					: new ChannelGroup(payload);
+
+				await channel?.save({
+					...(session && { session }),
+				});
+			}
+
+			return { channel, message: 'Success.' };
 		} catch (error) {
 			if (shouldThrowError) {
 				throw error;
 			}
 
-			return { error };
+			return { error, message: getErrorMessage({ error }) };
 		}
 	}
 
@@ -156,7 +224,7 @@ class ChannelsService {
 		shouldThrowError?: boolean;
 		session?: mongoose.mongo.ClientSession;
 	}): Promise<{
-		channels?: HydratedDocument<IChannel>[] | null;
+		channels?: IChannelWithDirectMessageChannelMembers[] | null;
 		pagination?: IPagination;
 		error?: any;
 	}> {
@@ -224,8 +292,36 @@ class ChannelsService {
 				.skip((page - 1) * sizePerPage)
 				.limit(sizePerPage);
 
+			const channelsWithPopulatedDirectMessageChannels: IChannelWithDirectMessageChannelMembers[] =
+				await Promise.all(
+					map(
+						channels || [],
+						async (
+							channel
+						): Promise<IChannelWithDirectMessageChannelMembers> => {
+							const isDirectMessage = validateDirectMessageUniqueKey(
+								channel?.directMessageUniqueKey || ''
+							);
+
+							if (isDirectMessage) {
+								const { channelMembers } =
+									await this.getChannelMembersByChannelId({
+										channelId: channel?._id.toString() || '',
+									});
+
+								return {
+									channel,
+									directMessageChannelMembers: channelMembers,
+								};
+							}
+
+							return { channel };
+						}
+					)
+				);
+
 			return {
-				channels,
+				channels: channelsWithPopulatedDirectMessageChannels,
 				pagination: getPagination({ page, sizePerPage, totalItems }),
 			};
 		} catch (error) {
@@ -412,18 +508,40 @@ class ChannelsService {
 	async createChannelMember(params: {
 		payload: Partial<IChannelMember>;
 		shouldThrowError?: boolean;
+		upsert?: boolean;
 		session?: mongoose.mongo.ClientSession;
 	}): Promise<{
-		channelMember?: Partial<IChannelMember> | null;
+		channelMember?: IChannelMember | null;
 		error?: any;
 	}> {
-		const { payload, shouldThrowError = false, session = undefined } = params;
+		const {
+			payload,
+			shouldThrowError = false,
+			session = undefined,
+			upsert = false,
+		} = params;
 		const propsToOmit: (keyof IChannelMember)[] = ['deletedAt', 'updatedAt'];
 		const parsedPayload = omit(payload, propsToOmit) as Partial<IChannelMember>;
 
 		try {
-			const channelMember = new ChannelMember(parsedPayload);
-			await channelMember.save({ ...(session && { session }) });
+			let channelMember: IChannelMember | null | undefined = null;
+
+			if (upsert) {
+				const createChannelMember = await ChannelMember.findOneAndUpdate(
+					{
+						userId: parsedPayload.userId || '',
+						channelId: parsedPayload.channelId || '',
+					},
+					payload,
+					{ upsert: true, returnDocument: 'after', ...(session && { session }) }
+				);
+
+				channelMember = createChannelMember;
+			} else {
+				channelMember = await new ChannelMember(parsedPayload).save({
+					...(session && { session }),
+				});
+			}
 
 			return { channelMember };
 		} catch (error) {

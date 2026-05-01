@@ -1,4 +1,4 @@
 export * from './UsersService';
 export * from './MessagesService';
 export * from './ChannelsService';
-export * from './WebsocketService';
+export * from './websocketService';

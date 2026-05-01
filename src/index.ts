@@ -4,6 +4,7 @@ import { mongooseInit } from './lib';
 import { chatWebsocketRoutes } from '@src/websockets/v1/chat';
 import { verifyJwtToken } from './rest-apis/v1/middlewares';
 import { AppRoutes } from './rest-apis/v1/routes';
+import { getErrorMessage } from './helpers';
 
 import cors from '@fastify/cors';
 import FastifyWebSocket from '@fastify/websocket';
@@ -45,6 +46,12 @@ fastify.register(chatWebsocketRoutes, { prefix: '/v1' });
 
 fastify.get('/', (request, reply) => {
 	reply.status(200).send({ hello: 'world' });
+});
+
+fastify.setErrorHandler((error, request, reply) => {
+	console.error('error', error);
+	reply.status(500);
+	return { error, message: getErrorMessage({ error }) };
 });
 
 async function start() {

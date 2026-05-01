@@ -1,7 +1,11 @@
-import { getErrorMessage } from '@src/helpers';
+import { getErrorMessage, validateDirectMessageUniqueKey } from '@src/helpers';
 import { Message } from '@src/lib/db';
 import { IMessage } from '@src/shared/types';
-import mongoose, { HydratedDocument, ObjectId } from 'mongoose';
+import mongoose, {
+	HydratedDocument,
+	isValidObjectId,
+	ObjectId,
+} from 'mongoose';
 
 class MessagesService {
 	/**
@@ -55,26 +59,46 @@ class MessagesService {
 	 * @return {Promise<{ messages?: IMessage[] | null | undefined; error?: any; message?: string; }>}
 	 */
 	async getMessages(params: {
-		channelId: string | ObjectId;
+		conversationKey: string | ObjectId;
 		lastSeenMessageId?: string | ObjectId | undefined | null;
 		lastSeenMessageCreatedAt?: Date | undefined | null;
 		sizePerPage?: number;
+		shouldThrowError?: boolean;
 	}): Promise<{
 		messages?: IMessage[];
 		error?: any;
-		message?: string;
+		message: string;
 	}> {
 		const {
-			channelId,
+			conversationKey,
 			lastSeenMessageId = undefined,
 			lastSeenMessageCreatedAt = undefined,
 			sizePerPage = 20,
+			shouldThrowError = false,
 		} = params;
+		const isChannelId = isValidObjectId(conversationKey);
+		const isDirectMessageUniqueKey = validateDirectMessageUniqueKey(
+			conversationKey?.toString()
+		);
+
+		if (!isChannelId && !isDirectMessageUniqueKey) {
+			if (shouldThrowError) {
+				throw new Error('Invalid conversationKey');
+			}
+
+			return {
+				error: 'Invalid conversationKey',
+				message: 'Invalid conversationKey.',
+			};
+		}
 
 		try {
 			const messages = await Message.find(
 				{
-					channelId,
+					...(isChannelId && { channelId: conversationKey }),
+					...(isDirectMessageUniqueKey && {
+						directMessageUniqueKey: conversationKey,
+					}),
 					deletedAt: null,
 					...(lastSeenMessageId &&
 						lastSeenMessageCreatedAt && {

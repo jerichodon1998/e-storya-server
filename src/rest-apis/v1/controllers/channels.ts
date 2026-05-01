@@ -4,6 +4,7 @@ import { ChannelMemberRoleEnum, ChannelTypeEnum } from '@src/shared/enums';
 import {
 	ChannelMemberWithUser,
 	IChannel,
+	IChannelWithDirectMessageChannelMembers,
 	IPagination,
 } from '@src/shared/types';
 import { FastifyReply, FastifyRequest } from 'fastify';
@@ -14,13 +15,13 @@ import mongoose, { HydratedDocument, isValidObjectId } from 'mongoose';
  *
  * @param {FastifyRequest} request
  * @param {FastifyReply} reply
- * @return {Promise<{ channels?: IChannel[] | null | undefined; error?: any; message?: string; pagination?: IPagination | undefined; }>}
+ * @return {Promise<{ channels?: IChannelWithDirectMessageChannelMembers[] | null | undefined; error?: any; message?: string; pagination?: IPagination | undefined; }>}
  */
 export async function getUserChannelsController(
 	request: FastifyRequest,
 	reply: FastifyReply
 ): Promise<{
-	channels?: IChannel[] | null | undefined;
+	channels?: IChannelWithDirectMessageChannelMembers[] | null | undefined;
 	error?: any;
 	message?: string;
 	pagination?: IPagination | undefined;

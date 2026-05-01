@@ -34,9 +34,15 @@ export interface IChannel {
 	createdAt: Date;
 	updatedAt?: Date;
 	deletedAt?: Date;
+	lastActivityAt?: Date;
 	ownerId: mongoose.Schema.Types.ObjectId | string;
 	name: string;
 	channelType: ChannelTypeEnum;
+	/**
+	 * Direct message unique key.
+	 * - key = `${ObjectId.toString()}-${ObjectId.toString()}`
+	 */
+	directMessageUniqueKey: string;
 }
 
 export interface IChannelMember {
@@ -54,6 +60,11 @@ export type ChannelMemberWithUser = HydratedDocument<IChannelMember> & {
 	userId: IUser;
 };
 
+export type IChannelWithDirectMessageChannelMembers = {
+	channel: HydratedDocument<IChannel>;
+	directMessageChannelMembers?: ChannelMemberWithUser[] | null | undefined;
+};
+
 export interface IPagination {
 	page: number;
 	sizePerPage: number;
@@ -62,3 +73,5 @@ export interface IPagination {
 	hasPreviousPage: boolean;
 	hasNextPage: boolean;
 }
+
+export * from './websocket';

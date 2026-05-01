@@ -1,9 +1,20 @@
 import { messagesService } from '@lib/services/MessagesService';
-import { MessageTypeEnum } from '@src/shared/enums';
-import { IMessage } from '@src/shared/types';
-import { isValidObjectId, ObjectId } from 'mongoose';
+import {
+	ChannelMemberRoleEnum,
+	ChannelMemberStatusEnum,
+	ChannelTypeEnum,
+	MessageTypeEnum,
+} from '@src/shared/enums';
+import {
+	IChannel,
+	IChannelMember,
+	IChatWebsocketPayload,
+	IMessage,
+} from '@src/shared/types';
+import mongoose, { isValidObjectId, ObjectId } from 'mongoose';
 import { WebSocket } from 'ws';
 import { channelsService } from './ChannelsService';
+import { validateDirectMessageUniqueKey } from '@src/helpers';
 
 class WebSocketService {
 	/**
@@ -83,7 +94,7 @@ class WebSocketService {
 		}
 
 		if (channels) {
-			for (const channel of channels) {
+			for (const { channel } of channels) {
 				if (!this.channelsToUsers.get(channel._id?.toString())) {
 					this.channelsToUsers.set(channel._id?.toString(), new Set());
 				}
@@ -159,22 +170,45 @@ class WebSocketService {
 
 		this.logClients();
 
-		socket.on('message', (message: Buffer | ArrayBuffer | Buffer[]) => {
+		socket.on('message', async (payload: Buffer | ArrayBuffer | Buffer[]) => {
 			try {
-				const parsedMessage = JSON.parse(message?.toString()) as IMessage;
-				console.log('parsedMessage', parsedMessage);
+				const parsedPayload = JSON.parse(
+					payload?.toString()
+				) as IChatWebsocketPayload;
+				console.log('parsedPayload', parsedPayload);
+
+				const channelId = parsedPayload?.message?.channelId;
+
+				const directMessageUniqueKey = validateDirectMessageUniqueKey(
+					parsedPayload?.directMessageUniqueKey || ''
+				)
+					? parsedPayload?.directMessageUniqueKey
+					: undefined;
+
+				const channel = isValidObjectId(channelId)
+					? (await channelsService.getChannelById({ id: channelId })).channel
+					: undefined;
+
+				// throw error if provided channelId doesn't exist
+				if (isValidObjectId(channelId) && !channel) {
+					socket.send(JSON.stringify({ error: 'Channel not found.' }));
+				}
 
 				const isAuthorizedToSendMessage = this.channelsToUsers
-					.get(parsedMessage.channelId?.toString())
+					.get(parsedPayload?.message?.channelId?.toString())
 					?.has(userId?.toString());
 
-				if (!isAuthorizedToSendMessage) {
-					console.log('Unauthorized');
+				if (!isAuthorizedToSendMessage && !directMessageUniqueKey) {
+					console.error('Unauthorized');
 					socket.send(JSON.stringify({ error: 'Unauthorized' }));
 					return;
 				}
 
-				this.broadcast({ message: parsedMessage });
+				this.broadcast({
+					message: parsedPayload?.message,
+					...(directMessageUniqueKey && { directMessageUniqueKey }),
+					channel,
+				});
 			} catch (error: any) {
 				console.log('error', error?.message);
 			}
@@ -272,6 +306,35 @@ class WebSocketService {
 		}
 	}
 
+	subscribeUserToChannel(params: {
+		userId: string | ObjectId;
+		channelId: string | ObjectId;
+	}) {
+		console.log('subscribeUserToChannel()');
+
+		const { userId, channelId } = params;
+
+		if (!isValidObjectId(userId) || !isValidObjectId(channelId)) {
+			console.error('Invalid userId or channelId');
+			return;
+		}
+
+		const userIdString = userId?.toString();
+		const channelIdString = channelId?.toString();
+
+		if (!this.usersToChannels.has(userIdString)) {
+			this.usersToChannels.set(userIdString, new Set());
+		}
+
+		this.usersToChannels.get(userIdString)?.add(channelIdString);
+
+		if (!this.channelsToUsers.has(channelIdString)) {
+			this.channelsToUsers.set(channelIdString, new Set());
+		}
+
+		this.channelsToUsers.get(channelIdString)?.add(userIdString);
+	}
+
 	/**
 	 * Broadcast message to all users in the channel.
 	 *
@@ -280,6 +343,8 @@ class WebSocketService {
 	 */
 	async broadcast(params: {
 		message: string | Record<string, any>;
+		directMessageUniqueKey?: string;
+		channel?: IChannel | undefined | null;
 	}): Promise<void> {
 		const parsedMessage: IMessage =
 			typeof params.message === 'string'
@@ -289,17 +354,102 @@ class WebSocketService {
 			typeof params.message === 'string'
 				? params.message
 				: JSON.stringify(params.message);
-		const channelId = parsedMessage.channelId;
+		const channelId = parsedMessage?.channelId;
+		const channel = params?.channel;
+		const directMessageUniqueKey = params?.directMessageUniqueKey || '';
+		const shouldCreateDirectMessageChannel =
+			!channel && validateDirectMessageUniqueKey(directMessageUniqueKey || '');
 
 		try {
-			await messagesService.insertMessages({
-				messages: [
-					{
-						...parsedMessage,
-						type: MessageTypeEnum.TEXT,
+			// create new channel members
+			const separatedIds = directMessageUniqueKey.split('-');
+			const userId1 = separatedIds[0] || '';
+			const userId2 = separatedIds[1] || '';
+
+			if (!isValidObjectId(userId1) || !isValidObjectId(userId2)) {
+				throw new Error('Invalid userId');
+			}
+
+			await mongoose.connection.transaction(async (session) => {
+				let finalChannel: IChannel | undefined | null = channel;
+
+				if (shouldCreateDirectMessageChannel) {
+					const { channel: newDirectMessageChannel, error } =
+						await channelsService.createChannel({
+							payload: {
+								channelType: ChannelTypeEnum.DIRECT_MESSAGE,
+								directMessageUniqueKey,
+							},
+							session,
+							upsert: true,
+							shouldThrowError: true,
+						});
+
+					if (error || !newDirectMessageChannel) {
+						throw error || new Error('Channel not created');
+					}
+
+					const newChannelMembers: IChannelMember[] = [];
+
+					for (const userId of [userId1, userId2]) {
+						const { channelMember, error } =
+							await channelsService.createChannelMember({
+								payload: {
+									role: ChannelMemberRoleEnum.MEMBER,
+									userId,
+									channelId: newDirectMessageChannel?._id || '',
+									status: ChannelMemberStatusEnum.ACTIVE,
+								},
+								session,
+								shouldThrowError: true,
+								upsert: true,
+							});
+
+						if (error || !channelMember) {
+							throw error || new Error('Channel member not created');
+						}
+
+						newChannelMembers.push(channelMember);
+					}
+
+					for (const userId of [userId1, userId2]) {
+						if (this.usersToSockets.get(userId)) {
+							this.subscribeUserToChannel({
+								userId,
+								channelId: newDirectMessageChannel?._id || '',
+							});
+						}
+					}
+
+					console.log(
+						'newDirectMessageChannel',
+						newDirectMessageChannel?._id?.toString()
+					);
+					this.logClients();
+
+					finalChannel = newDirectMessageChannel;
+				}
+
+				await messagesService.insertMessages({
+					messages: [
+						{
+							...parsedMessage,
+							channelId: finalChannel?._id || '',
+							type: MessageTypeEnum.TEXT,
+						},
+					],
+					shouldThrowError: true,
+					session,
+				});
+
+				await channelsService.updateChannel({
+					id: finalChannel?._id || '',
+					payload: {
+						lastActivityAt: new Date(),
 					},
-				],
-				shouldThrowError: true,
+					shouldThrowError: true,
+					session,
+				});
 			});
 
 			const users = this.channelsToUsers.get(channelId?.toString());

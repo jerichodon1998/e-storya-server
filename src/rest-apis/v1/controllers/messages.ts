@@ -14,7 +14,7 @@ import mongoose from 'mongoose';
 export async function getMessagesController(
 	request: FastifyRequest<{
 		Params: {
-			channelId: string;
+			conversationKey: string;
 		};
 		Querystring: {
 			sizePerPage?: number;
@@ -45,7 +45,7 @@ export async function getMessagesController(
 	error?: any;
 	message?: string | undefined;
 }> {
-	const { channelId } = request.params;
+	const { conversationKey } = request.params;
 	const {
 		sizePerPage = 20,
 		lastSeenMessageId,
@@ -56,7 +56,7 @@ export async function getMessagesController(
 		: undefined;
 
 	const { error, messages } = await messagesService.getMessages({
-		channelId,
+		conversationKey,
 		sizePerPage,
 		lastSeenMessageId,
 		lastSeenMessageCreatedAt: parsedLastSeenMessageCreatedAt,
