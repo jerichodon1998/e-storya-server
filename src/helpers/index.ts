@@ -1,6 +1,9 @@
 import {
 	ChannelMemberRoleEnum,
 	ChannelMemberStatusEnum,
+	WebsocketChannelEventTypeEnum,
+	WebsocketChannelMemberEventTypeEnum,
+	WebsocketMessageEventTypeEnum,
 } from '@src/shared/enums';
 import { IPagination } from '@src/shared/types';
 import { isEmpty, isString } from 'lodash-es';
@@ -161,4 +164,40 @@ export function validateDirectMessageUniqueKey(
 	}
 
 	return true;
+}
+
+export function getWebsocketEventType(event: string) {
+	const eventType = {
+		isMessageEvent: false,
+		isChannelEvent: false,
+		isChannelMemberEvent: false,
+	};
+
+	if (
+		event === WebsocketMessageEventTypeEnum.MESSAGE_CREATED ||
+		event === WebsocketMessageEventTypeEnum.MESSAGE_UPDATED ||
+		event === WebsocketMessageEventTypeEnum.MESSAGE_DELETED
+	) {
+		eventType.isMessageEvent = true;
+	}
+
+	if (
+		event === WebsocketChannelEventTypeEnum.CHANNEL_CREATED ||
+		event === WebsocketChannelEventTypeEnum.CHANNEL_UPDATED ||
+		event === WebsocketChannelEventTypeEnum.CHANNEL_DELETED
+	) {
+		eventType.isChannelEvent = true;
+	}
+
+	if (
+		event === WebsocketChannelMemberEventTypeEnum.CHANNEL_MEMBER_CREATED ||
+		event === WebsocketChannelMemberEventTypeEnum.CHANNEL_MEMBER_UPDATED ||
+		event === WebsocketChannelMemberEventTypeEnum.CHANNEL_MEMBER_DELETED ||
+		event === WebsocketChannelMemberEventTypeEnum.CHANNEL_MEMBER_JOINED ||
+		event === WebsocketChannelMemberEventTypeEnum.CHANNEL_MEMBER_LEFT
+	) {
+		eventType.isChannelMemberEvent = true;
+	}
+
+	return eventType;
 }

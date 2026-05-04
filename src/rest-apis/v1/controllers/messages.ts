@@ -1,8 +1,8 @@
 import { getErrorMessage } from '@src/helpers';
-import { messagesService } from '@src/lib';
+import { channelsService, messagesService } from '@src/lib';
 import { IMessage } from '@src/shared/types';
 import { FastifyReply, FastifyRequest } from 'fastify';
-import mongoose from 'mongoose';
+import mongoose, { isValidObjectId } from 'mongoose';
 
 /**
  * Get messages controller.
@@ -55,8 +55,23 @@ export async function getMessagesController(
 		? new Date(lastSeenMessageCreatedAt)
 		: undefined;
 
+	const isChannelId = isValidObjectId(conversationKey);
+
+	const finalChannelId = isChannelId
+		? conversationKey
+		: (
+				await channelsService.getChannelById({
+					directMessageUniqueKey: conversationKey,
+				})
+			)?.channel?._id;
+
+	if (!finalChannelId) {
+		reply.status(404);
+		return { error: 'Channel not found', message: 'Channel not found.' };
+	}
+
 	const { error, messages } = await messagesService.getMessages({
-		conversationKey,
+		channelId: finalChannelId,
 		sizePerPage,
 		lastSeenMessageId,
 		lastSeenMessageCreatedAt: parsedLastSeenMessageCreatedAt,

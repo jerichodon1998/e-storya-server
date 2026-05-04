@@ -4,10 +4,12 @@ import {
 	ChannelMemberStatusEnum,
 	ChannelTypeEnum,
 	MessageTypeEnum,
+	WebsocketChannelEventTypeEnum,
+	WebsocketMessageEventTypeEnum,
 } from '@src/shared/enums';
 import {
+	ChannelMemberWithUser,
 	IChannel,
-	IChannelMember,
 	IChatWebsocketPayload,
 	IMessage,
 } from '@src/shared/types';
@@ -15,6 +17,7 @@ import mongoose, { isValidObjectId, ObjectId } from 'mongoose';
 import { WebSocket } from 'ws';
 import { channelsService } from './ChannelsService';
 import { validateDirectMessageUniqueKey } from '@src/helpers';
+import { head, isEmpty } from 'lodash-es';
 
 class WebSocketService {
 	/**
@@ -175,9 +178,8 @@ class WebSocketService {
 				const parsedPayload = JSON.parse(
 					payload?.toString()
 				) as IChatWebsocketPayload;
-				console.log('parsedPayload', parsedPayload);
 
-				const channelId = parsedPayload?.message?.channelId;
+				const channelId = parsedPayload?.message?.channelId?.toString() || '';
 
 				const directMessageUniqueKey = validateDirectMessageUniqueKey(
 					parsedPayload?.directMessageUniqueKey || ''
@@ -192,23 +194,26 @@ class WebSocketService {
 				// throw error if provided channelId doesn't exist
 				if (isValidObjectId(channelId) && !channel) {
 					socket.send(JSON.stringify({ error: 'Channel not found.' }));
+					return;
 				}
 
 				const isAuthorizedToSendMessage = this.channelsToUsers
-					.get(parsedPayload?.message?.channelId?.toString())
+					.get(channelId)
 					?.has(userId?.toString());
 
-				if (!isAuthorizedToSendMessage && !directMessageUniqueKey) {
-					console.error('Unauthorized');
+				if (!isAuthorizedToSendMessage && channelId) {
 					socket.send(JSON.stringify({ error: 'Unauthorized' }));
 					return;
 				}
 
-				this.broadcast({
-					message: parsedPayload?.message,
-					...(directMessageUniqueKey && { directMessageUniqueKey }),
-					channel,
-				});
+				if (!isEmpty(parsedPayload?.message)) {
+					this.broadcast({
+						message: parsedPayload?.message,
+						...(directMessageUniqueKey && { directMessageUniqueKey }),
+						channel,
+						event: WebsocketMessageEventTypeEnum.MESSAGE_SENDING,
+					});
+				}
 			} catch (error: any) {
 				console.log('error', error?.message);
 			}
@@ -345,15 +350,12 @@ class WebSocketService {
 		message: string | Record<string, any>;
 		directMessageUniqueKey?: string;
 		channel?: IChannel | undefined | null;
+		event: WebsocketMessageEventTypeEnum;
 	}): Promise<void> {
 		const parsedMessage: IMessage =
 			typeof params.message === 'string'
 				? JSON.parse(params.message)
 				: params.message;
-		const stringifiedMessage =
-			typeof params.message === 'string'
-				? params.message
-				: JSON.stringify(params.message);
 		const channelId = parsedMessage?.channelId;
 		const channel = params?.channel;
 		const directMessageUniqueKey = params?.directMessageUniqueKey || '';
@@ -361,19 +363,27 @@ class WebSocketService {
 			!channel && validateDirectMessageUniqueKey(directMessageUniqueKey || '');
 
 		try {
-			// create new channel members
-			const separatedIds = directMessageUniqueKey.split('-');
-			const userId1 = separatedIds[0] || '';
-			const userId2 = separatedIds[1] || '';
-
-			if (!isValidObjectId(userId1) || !isValidObjectId(userId2)) {
-				throw new Error('Invalid userId');
-			}
+			let newInsertedMessage: IMessage | undefined = undefined;
+			let finalChannel: IChannel | undefined | null = channel;
+			let isDirectMessageChannel =
+				shouldCreateDirectMessageChannel ||
+				channel?.channelType === ChannelTypeEnum.DIRECT_MESSAGE;
+			let directMessageChannelMembers:
+				| ChannelMemberWithUser[]
+				| undefined
+				| null = undefined;
 
 			await mongoose.connection.transaction(async (session) => {
-				let finalChannel: IChannel | undefined | null = channel;
-
 				if (shouldCreateDirectMessageChannel) {
+					// create new channel members
+					const separatedIds = directMessageUniqueKey.split('-');
+					const userId1 = separatedIds[0] || '';
+					const userId2 = separatedIds[1] || '';
+
+					if (!isValidObjectId(userId1) || !isValidObjectId(userId2)) {
+						throw new Error('Invalid userId');
+					}
+
 					const { channel: newDirectMessageChannel, error } =
 						await channelsService.createChannel({
 							payload: {
@@ -388,8 +398,6 @@ class WebSocketService {
 					if (error || !newDirectMessageChannel) {
 						throw error || new Error('Channel not created');
 					}
-
-					const newChannelMembers: IChannelMember[] = [];
 
 					for (const userId of [userId1, userId2]) {
 						const { channelMember, error } =
@@ -408,8 +416,6 @@ class WebSocketService {
 						if (error || !channelMember) {
 							throw error || new Error('Channel member not created');
 						}
-
-						newChannelMembers.push(channelMember);
 					}
 
 					for (const userId of [userId1, userId2]) {
@@ -421,16 +427,12 @@ class WebSocketService {
 						}
 					}
 
-					console.log(
-						'newDirectMessageChannel',
-						newDirectMessageChannel?._id?.toString()
-					);
 					this.logClients();
 
 					finalChannel = newDirectMessageChannel;
 				}
 
-				await messagesService.insertMessages({
+				const messages = await messagesService.insertMessages({
 					messages: [
 						{
 							...parsedMessage,
@@ -442,27 +444,64 @@ class WebSocketService {
 					session,
 				});
 
-				await channelsService.updateChannel({
-					id: finalChannel?._id || '',
-					payload: {
-						lastActivityAt: new Date(),
-					},
-					shouldThrowError: true,
-					session,
-				});
+				newInsertedMessage = head(messages.messages);
+
+				directMessageChannelMembers = isDirectMessageChannel
+					? (
+							await channelsService.getChannelMembersByChannelId({
+								channelId: finalChannel?._id || '',
+								shouldThrowError: true,
+								session,
+							})
+						)?.channelMembers
+					: undefined;
+
+				finalChannel = (
+					await channelsService.updateChannel({
+						id: finalChannel?._id || '',
+						payload: {
+							lastActivityAt: new Date(),
+						},
+						shouldThrowError: true,
+						session,
+					})
+				)?.channel;
 			});
 
-			const users = this.channelsToUsers.get(channelId?.toString());
+			const users = this.channelsToUsers.get(
+				channelId?.toString() || finalChannel?._id?.toString() || ''
+			);
 
 			if (users) {
 				for (const user of users) {
 					const userSockets = this.usersToSockets.get(user);
+					const payloadWithMessage: IChatWebsocketPayload | undefined =
+						newInsertedMessage
+							? {
+									event: WebsocketMessageEventTypeEnum.MESSAGE_CREATED,
+									message: newInsertedMessage,
+								}
+							: undefined;
+					const payloadWithChannel: IChatWebsocketPayload | undefined =
+						finalChannel
+							? {
+									event: WebsocketChannelEventTypeEnum.CHANNEL_CREATED,
+									directMessageChannelMembers,
+									channel: finalChannel,
+								}
+							: undefined;
 
 					if (userSockets) {
 						for (const socket of userSockets) {
 							if (socket.readyState === WebSocket.OPEN) {
 								try {
-									socket.send(stringifiedMessage);
+									if (payloadWithChannel) {
+										socket.send(JSON.stringify(payloadWithChannel));
+									}
+
+									if (payloadWithMessage) {
+										socket.send(JSON.stringify(payloadWithMessage));
+									}
 								} catch (error) {
 									console.log('error', error);
 								}

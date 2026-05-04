@@ -28,6 +28,7 @@ const messageSchema = new Schema<IMessage>({
 		required: true,
 		ref: CollectionNamesEnum.CHANNELS,
 	},
+	directMessageUniqueKey: { type: String, ref: CollectionNamesEnum.CHANNELS },
 	type: { type: String, required: true, enum: MessageTypeEnum },
 });
 

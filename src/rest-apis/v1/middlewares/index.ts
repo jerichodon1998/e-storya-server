@@ -17,7 +17,9 @@ export async function verifyJwtToken(
 	request: FastifyRequest,
 	reply?: FastifyReply
 ): Promise<void> {
-	const token = request.cookies?.[CookieNamesEnum.APP_USER_TOKEN_JWT];
+	const token =
+		request.cookies?.[CookieNamesEnum.APP_USER_TOKEN_JWT] ||
+		(request.headers?.[CookieNamesEnum.APP_USER_TOKEN_JWT] as string);
 
 	if (!token) {
 		reply?.status(401);

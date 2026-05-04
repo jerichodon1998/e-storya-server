@@ -18,7 +18,13 @@ import mongoose, { HydratedDocument, isValidObjectId } from 'mongoose';
  * @return {Promise<{ channels?: IChannelWithDirectMessageChannelMembers[] | null | undefined; error?: any; message?: string; pagination?: IPagination | undefined; }>}
  */
 export async function getUserChannelsController(
-	request: FastifyRequest,
+	request: FastifyRequest<{
+		Querystring: {
+			sizePerPage?: number;
+			lastSeenChannelId?: string;
+			lastSeenActivityAt?: string;
+		};
+	}>,
 	reply: FastifyReply
 ): Promise<{
 	channels?: IChannelWithDirectMessageChannelMembers[] | null | undefined;
@@ -27,10 +33,29 @@ export async function getUserChannelsController(
 	pagination?: IPagination | undefined;
 }> {
 	const user = request.user;
+	const {
+		sizePerPage = 20,
+		lastSeenChannelId,
+		lastSeenActivityAt,
+	} = request.query;
+
+	const lastSeenActivityAtDate = lastSeenActivityAt
+		? new Date(lastSeenActivityAt)
+		: undefined;
+	const lastSeenChannelIdString =
+		lastSeenChannelId && isValidObjectId(lastSeenChannelId)
+			? lastSeenChannelId.toString()
+			: undefined;
 
 	const { channels, error, pagination } =
 		await channelsService.getChannelsByUserId({
+			sizePerPage,
 			userId: user._id,
+			...(lastSeenChannelIdString &&
+				lastSeenActivityAtDate && {
+					lastSeenActivityAt: lastSeenActivityAtDate,
+					lastSeenChannelId: lastSeenChannelIdString,
+				}),
 		});
 
 	if (error) {

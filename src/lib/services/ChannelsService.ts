@@ -18,7 +18,7 @@ import {
 	ChannelMember,
 } from '@src/lib/db/schemas';
 import { ChannelMemberStatusEnum, ChannelTypeEnum } from '@src/shared/enums';
-import { map, omit } from 'lodash-es';
+import { isNumber, map, omit } from 'lodash-es';
 import {
 	getErrorMessage,
 	getPagination,
@@ -50,12 +50,12 @@ class ChannelsService {
 			session = undefined,
 		} = params;
 
-		if (!id && directMessageUniqueKey) {
+		if (!id && !directMessageUniqueKey) {
 			if (shouldThrowError) {
-				throw new Error('Invalid channelId');
+				throw new Error('Invalid channelId/directMessageUniqueKey');
 			}
 
-			return { error: 'Invalid channelId' };
+			return { error: 'Invalid channelId/directMessageUniqueKey' };
 		}
 
 		try {
@@ -221,6 +221,8 @@ class ChannelsService {
 		userId: string | ObjectId;
 		page?: number;
 		sizePerPage?: number;
+		lastSeenChannelId?: string | ObjectId;
+		lastSeenActivityAt?: string | Date;
 		shouldThrowError?: boolean;
 		session?: mongoose.mongo.ClientSession;
 	}): Promise<{
@@ -230,11 +232,25 @@ class ChannelsService {
 	}> {
 		const {
 			userId,
-			page = 1,
-			sizePerPage = 10,
+			page = undefined,
+			sizePerPage = 20,
 			shouldThrowError = false,
+			lastSeenChannelId = undefined,
+			lastSeenActivityAt = undefined,
 			session = undefined,
 		} = params;
+
+		const isPagedPaginationQuery = isNumber(page);
+
+		const parsedLastSeenChannelId = isValidObjectId(lastSeenChannelId)
+			? lastSeenChannelId?.toString()
+			: undefined;
+
+		const parsedLastSeenActivityAt = new Date(
+			lastSeenActivityAt?.toString() || ''
+		);
+
+		const skipCount = isPagedPaginationQuery ? (page - 1) * sizePerPage : 0;
 
 		if (!isValidObjectId(userId)) {
 			if (shouldThrowError) {
@@ -258,6 +274,9 @@ class ChannelsService {
 							ChannelMemberStatusEnum.PENDING,
 						],
 					},
+					...(parsedLastSeenChannelId && {
+						channelId: { $ne: parsedLastSeenChannelId },
+					}),
 				},
 				null,
 				{ ...(session && { session }) }
@@ -271,25 +290,34 @@ class ChannelsService {
 				(channelMember) => channelMember?.channelId
 			);
 
-			const totalItems = await Channel.find(
-				{
-					_id: { $in: userChannelIds },
-					deletedAt: null,
-				},
-				null,
-				{ ...(session && { session }) }
-			).countDocuments();
+			const totalItems = isPagedPaginationQuery
+				? await Channel.find(
+						{
+							_id: { $in: userChannelIds },
+							deletedAt: null,
+						},
+						null,
+						{ ...(session && { session }) }
+					).countDocuments()
+				: undefined;
 
 			const channels = await Channel.find(
 				{
 					_id: { $in: userChannelIds },
 					deletedAt: null,
+					...(parsedLastSeenChannelId &&
+						parsedLastSeenActivityAt && {
+							lastActivityAt: { $lte: parsedLastSeenActivityAt },
+						}),
 				},
 				null,
 				{ ...(session && { session }) }
 			)
-				.sort({ createdAt: 'desc' })
-				.skip((page - 1) * sizePerPage)
+				.sort({
+					...(!isPagedPaginationQuery && { lastActivityAt: 'desc' }),
+					...(isPagedPaginationQuery && { createdAt: 'desc' }),
+				})
+				.skip(skipCount)
 				.limit(sizePerPage);
 
 			const channelsWithPopulatedDirectMessageChannels: IChannelWithDirectMessageChannelMembers[] =
@@ -322,7 +350,13 @@ class ChannelsService {
 
 			return {
 				channels: channelsWithPopulatedDirectMessageChannels,
-				pagination: getPagination({ page, sizePerPage, totalItems }),
+				...(isPagedPaginationQuery && {
+					pagination: getPagination({
+						page,
+						sizePerPage,
+						totalItems: totalItems || 0,
+					}),
+				}),
 			};
 		} catch (error) {
 			if (shouldThrowError) {

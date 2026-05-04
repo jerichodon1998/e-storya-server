@@ -15,6 +15,7 @@ export interface IMessage {
 	userId: mongoose.Schema.Types.ObjectId | string;
 	type: MessageTypeEnum;
 	channelId: mongoose.Schema.Types.ObjectId | string;
+	directMessageUniqueKey?: string;
 }
 
 export interface IUser {

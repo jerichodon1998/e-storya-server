@@ -5,13 +5,15 @@ export const getUserChannelsSchema: FastifySchema = {
 		type: 'object',
 		additionalProperties: false,
 		properties: {
-			page: {
+			sizePerPage: {
 				type: 'number',
-				default: 1,
+				default: 20,
 			},
-			limit: {
-				type: 'number',
-				default: 10,
+			lastSeenChannelId: {
+				type: 'string',
+			},
+			lastSeenActivityAt: {
+				type: 'string',
 			},
 		},
 	},

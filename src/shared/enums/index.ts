@@ -39,3 +39,29 @@ export enum SignUpMethodEnum {
 	EMAIL = 'email',
 	GOOGLE = 'google',
 }
+
+export enum WebsocketMessageEventTypeEnum {
+	MESSAGE_SENDING = 'message_sending',
+	MESSAGE_CREATED = 'message_created',
+	MESSAGE_UPDATED = 'message_updated',
+	MESSAGE_DELETED = 'message_deleted',
+}
+
+export enum WebsocketChannelEventTypeEnum {
+	CHANNEL_CREATED = 'channel_created',
+	CHANNEL_UPDATED = 'channel_updated',
+	CHANNEL_DELETED = 'channel_deleted',
+}
+
+export enum WebsocketChannelMemberEventTypeEnum {
+	CHANNEL_MEMBER_CREATED = 'channel_member_created',
+	CHANNEL_MEMBER_UPDATED = 'channel_member_updated',
+	CHANNEL_MEMBER_DELETED = 'channel_member_deleted',
+	CHANNEL_MEMBER_JOINED = 'channel_member_joined',
+	CHANNEL_MEMBER_LEFT = 'channel_member_left',
+}
+
+export type WebSocketEvents =
+	| WebsocketMessageEventTypeEnum
+	| WebsocketChannelEventTypeEnum
+	| WebsocketChannelMemberEventTypeEnum;
