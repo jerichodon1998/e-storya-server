@@ -30,6 +30,7 @@ class ChannelsService {
 	 * Get channel by ID.
 	 *
 	 * @param {string | ObjectId} params.id - The ID of the channel.
+	 * @param {string} params.directMessageUniqueKey - The direct message unique key.
 	 * @param {boolean} params.shouldThrowError=false - Whether to throw an error.
 	 * @param {mongoose.mongo.ClientSession} params.session - The Mongoose session for transaction.
 	 * @return {Promise<{ channel?: HydratedDocument<IChannel> | null; error?: any; }>}
@@ -209,13 +210,17 @@ class ChannelsService {
 
 	/**
 	 * Get channels by user ID.
+	 * - default cursor based query - provide page number to make it a paginated query.
 	 *
 	 * @param {string | ObjectId} params.userId - The ID of the user to get channels for.
-	 * @param {number} params.page - The page number to get channels for.
-	 * @param {number} params.sizePerPage - The size per page to get channels for.
-	 * @param {boolean} params.shouldThrowError=false - Whether to throw an error.
-	 * @param {mongoose.mongo.ClientSession} params.session - The Mongoose session for transaction.
-	 * @return {Promise<{ channels?: HydratedDocument<IChannel>[] | null; pagination?: IPagination; error?: any; }>}
+	 * @param {number} params.page
+	 * @param {number} params.sizePerPage
+	 * @param {string | ObjectId} params.lastSeenChannelId
+	 * @param {Date | string} params.lastSeenActivityAt
+	 * @param {boolean} params.shouldThrowError
+	 * @param {mongoose.mongo.ClientSession} params.session
+	 *
+	 * @return {Promise<{ channels?: IChannelWithDirectMessageChannelMembers[] | null | undefined; pagination?: IPagination; error?: any; }>}
 	 */
 	async getChannelsByUserId(params: {
 		userId: string | ObjectId;
